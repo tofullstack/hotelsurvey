@@ -5,14 +5,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Data
+@Entity
+@Table(name = "survey_sections", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"name", "language", "company_id"})
+})
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "survey_sections")
 public class SurveySection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,18 +22,20 @@ public class SurveySection {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private boolean active = true;
-
-    @Column(nullable = false)
-    private boolean denyUse = false;
+    @Column(name = "deny_use", nullable = false)
+    private Boolean denyUse = false;
 
     @Column(nullable = false)
     private String language;
 
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @Column(nullable = false)
+    private Boolean active = true;
 
-    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Question> questions = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+
+    @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC") // Order questions for consistent output
+    private List<Question> questions;
 }

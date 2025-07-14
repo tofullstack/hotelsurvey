@@ -1,25 +1,23 @@
 package br.com.survey.hotelsurvey.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import io.hypersistence.utils.hibernate.type.array.ListArrayType; // <- ADICIONE ESTE IMPORT
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.Type;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "questions")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Question {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "survey_section_id", nullable = false)
+    private SurveySection surveySection;
 
     @Column(nullable = false)
     private String label;
@@ -29,15 +27,10 @@ public class Question {
     private QuestionType type;
 
     @Column(nullable = false)
-    private boolean mandatory;
+    private Boolean mandatory = false;
 
-    // Esta anotação agora funcionará corretamente
-    @Type(ListArrayType.class)
-    @Column(name = "options", columnDefinition = "text[]")
-    private List<String> options = new ArrayList<>();
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "section_id", nullable = false)
-    @JsonBackReference
-    private SurveySection section;
+    // For CHOICE and SCALE types
+    private String options; // Store as comma-separated string or JSON
 }
+
+
