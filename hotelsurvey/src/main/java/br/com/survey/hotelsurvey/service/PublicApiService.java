@@ -42,8 +42,17 @@ public class PublicApiService {
         dto.setName(entity.getName());
         dto.setDenyUse(entity.getDenyUse()); // O campo denyUse permite ao hóspede informar que não utilizou aquele serviço.
         dto.setQuestions(entity.getQuestions().stream()
-                .map(question -> new PublicQuestionDto(question.getId(), question.getLabel()))
-                .collect(Collectors.toList()));
+                .map(question -> {
+                    PublicQuestionDto questionDto = new PublicQuestionDto();
+                    questionDto.setId(question.getId());
+                    questionDto.setLabel(question.getLabel());
+                    questionDto.setType(question.getType().toString());
+                    questionDto.setRequired(question.getRequired());
+                    questionDto.setOptions(question.; // se for List<String> ou ajusta se for List<OptionEntity>
+
+                    return questionDto;
+                })
+
         return dto;
     }
 }

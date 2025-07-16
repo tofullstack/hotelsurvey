@@ -13,7 +13,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/forms")
-@PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')") // Admin and regular users can manage forms
+@PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
+@CrossOrigin("*")
+// Admin and regular users can manage forms
 public class FormAdminController {
 
     @Autowired

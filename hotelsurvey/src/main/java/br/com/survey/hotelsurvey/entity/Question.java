@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Entity
 @Table(name = "questions")
@@ -30,7 +32,9 @@ public class Question {
     private Boolean mandatory = false;
 
     // For CHOICE and SCALE types
-    private String options; // Store as comma-separated string or JSON
+    private List<String> options; // Store as comma-separated string or JSON
+
+    private Boolean required;
 }
 
 
