@@ -15,10 +15,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -232,7 +229,13 @@ public class FormAdminService {
         dto.setLabel(entity.getLabel());
         dto.setType(entity.getType());
         dto.setMandatory(entity.getMandatory());
-        dto.setOptions(entity.getOptions());
+        dto.setOptions(
+                entity.getOptions() != null && !entity.getOptions().isEmpty()
+                        ? String.join(",", entity.getOptions())
+                        : ""
+        );
+
+
         return dto;
     }
 
@@ -245,7 +248,13 @@ public class FormAdminService {
         entity.setLabel(dto.getLabel());
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
-        entity.setOptions(dto.getOptions());
+        entity.setOptions(
+                dto.getOptions() != null && !dto.getOptions().isEmpty()
+                        ? Arrays.asList(dto.getOptions().split(","))
+                        : Collections.emptyList()
+        );
+
+
         return entity;
     }
 }

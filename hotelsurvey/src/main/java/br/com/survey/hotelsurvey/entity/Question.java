@@ -1,5 +1,6 @@
 package br.com.survey.hotelsurvey.entity;
 
+import br.com.survey.hotelsurvey.config.ListToJsonConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,7 @@ public class Question {
     private Boolean mandatory = false;
 
     // For CHOICE and SCALE types
+    @Convert(converter = ListToJsonConverter.class)
     private List<String> options; // Store as comma-separated string or JSON
 
     private Boolean required;

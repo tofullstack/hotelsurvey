@@ -124,7 +124,7 @@ public class SurveyResponseService {
             // question.getOptions() (ex: "Opção A,Opção B,Opção C")
             else if (question.getType() == QuestionType.CHOICE) {
                 if (question.getOptions() != null) {
-                    List<String> validOptions = List.of(question.getOptions().split(","));
+                    List<String> validOptions = question.getOptions();
                     if (!validOptions.contains(answerRequest.getAnswerValue())) {
                         throw new ValidationException("Choice question '" + question.getLabel() + "' has an invalid answer value.");
                     }

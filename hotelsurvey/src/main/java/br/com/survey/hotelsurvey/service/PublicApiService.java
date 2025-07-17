@@ -48,11 +48,12 @@ public class PublicApiService {
                     questionDto.setLabel(question.getLabel());
                     questionDto.setType(question.getType().toString());
                     questionDto.setRequired(question.getRequired());
-                    questionDto.setOptions(question.; // se for List<String> ou ajusta se for List<OptionEntity>
-
+                    questionDto.setOptions(question.getOptions());
                     return questionDto;
                 })
-
+                .collect(Collectors.toList()) // <-- isso estava faltando
+        );
         return dto;
     }
+
 }
