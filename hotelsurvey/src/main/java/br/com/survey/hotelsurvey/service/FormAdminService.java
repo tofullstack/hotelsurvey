@@ -222,39 +222,24 @@ public class FormAdminService {
         return dto;
     }
 
-    // Helper para converter entidade em DTO
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
         dto.setLabel(entity.getLabel());
         dto.setType(entity.getType());
         dto.setMandatory(entity.getMandatory());
-        dto.setOptions(
-                entity.getOptions() != null && !entity.getOptions().isEmpty()
-                        ? String.join(",", entity.getOptions())
-                        : ""
-        );
-
-
+        dto.setOptions(entity.getOptions()); // Agora entity.getOptions() retorna List<String>
         return dto;
     }
 
-    // Helper para converter DTO em entidade
     private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection) {
         Question entity = new Question();
-        // ID é opcional para novas perguntas, será gerado pelo JPA
-        entity.setId(dto.getId()); // Permite que o ID seja setado para atualização de perguntas existentes
+        entity.setId(dto.getId());
         entity.setSurveySection(surveySection);
         entity.setLabel(dto.getLabel());
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
-        entity.setOptions(
-                dto.getOptions() != null && !dto.getOptions().isEmpty()
-                        ? Arrays.asList(dto.getOptions().split(","))
-                        : Collections.emptyList()
-        );
-
-
+        entity.setOptions(dto.getOptions()); // Agora dto.getOptions() fornece List<String>
         return entity;
     }
 }

@@ -45,4 +45,14 @@ public class PublicSurveyController {
             return new ResponseEntity<>("Error submitting survey response: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
+
+    // NOVO ENDPOINT PARA OBTER UMA ÚNICA SEÇÃO POR ID para tratamento do QRCODE no frontend
+    @GetMapping("/questions/{companyId}/{language}/{sectionId}")
+    public ResponseEntity<PublicSurveySectionDto> getSingleSurveySection(
+            @PathVariable Long companyId,
+            @PathVariable String language,
+            @PathVariable Long sectionId) {
+        PublicSurveySectionDto surveySection = publicApiService.getSingleSurveySection(companyId, language, sectionId);
+        return ResponseEntity.ok(surveySection);
+    }
 }

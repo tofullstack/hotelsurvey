@@ -51,8 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/survey/questions/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/survey/submit-response").permitAll()
-                       // .requestMatchers("*").permitAll() //teste
-
+                        .requestMatchers(HttpMethod.GET, "/api/survey/questions/{companyId}/{language}/{sectionId}").permitAll()
                         .anyRequest().authenticated()
                 );
 

@@ -2,7 +2,9 @@ package br.com.survey.hotelsurvey.service;
 
 import br.com.survey.hotelsurvey.dto.PublicQuestionDto;
 import br.com.survey.hotelsurvey.dto.PublicSurveySectionDto;
+import br.com.survey.hotelsurvey.entity.Question;
 import br.com.survey.hotelsurvey.entity.SurveySection;
+import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.repository.SurveySectionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,8 +53,25 @@ public class PublicApiService {
                     questionDto.setOptions(question.getOptions());
                     return questionDto;
                 })
-                .collect(Collectors.toList()) // <-- isso estava faltando
+                .collect(Collectors.toList())
         );
+        return dto;
+    }
+
+    // NOVO MÉTODO PARA API PÚBLICA
+    public PublicSurveySectionDto getSingleSurveySection(Long companyId, String language, Long sectionId) {
+        SurveySection section = surveySectionRepository.findByIdAndCompanyIdAndLanguageAndActiveTrue(sectionId, companyId, language)
+                .orElseThrow(() -> new ResourceNotFoundException("Survey section with ID " + sectionId + " not found or not active for given company and language."));
+        return convertToPublicSurveySectionDto(section);
+    }
+
+    private PublicQuestionDto convertToPublicQuestionDto(Question entity) {
+        PublicQuestionDto dto = new PublicQuestionDto();
+        dto.setId(entity.getId());
+        dto.setLabel(entity.getLabel());
+        dto.setType(entity.getType().toString());
+        dto.setMandatory(entity.getMandatory()); // Boolean está no PublicQuestionDto
+        dto.setOptions(entity.getOptions());
         return dto;
     }
 
