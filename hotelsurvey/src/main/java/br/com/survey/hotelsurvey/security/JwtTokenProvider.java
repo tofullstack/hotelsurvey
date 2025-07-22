@@ -64,15 +64,15 @@ public class JwtTokenProvider {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(authToken);
             return true;
         } catch (SignatureException ex) {
-            // Invalid JWT signature
+
         } catch (MalformedJwtException ex) {
-            // Invalid JWT token
+
         } catch (ExpiredJwtException ex) {
-            // Expired JWT token
+
         } catch (UnsupportedJwtException ex) {
-            // Unsupported JWT token
+
         } catch (IllegalArgumentException ex) {
-            // JWT claims string is empty
+
         }
         return false;
     }
@@ -90,14 +90,13 @@ public class JwtTokenProvider {
         String profile = claims.get("profile", String.class);
         Boolean mustChangePassword = claims.get("mustChangePassword", Boolean.class);
 
-        // You might want to load the UserDetails from your service to ensure it's still active, etc.
-        // For simplicity here, we create a basic UserDetails object.
+
         br.com.survey.hotelsurvey.entity.User user = new br.com.survey.hotelsurvey.entity.User();
         user.setId(userId);
         user.setLogin(username);
         user.setProfile(br.com.survey.hotelsurvey.entity.UserProfile.valueOf(profile));
         user.setMustChangePassword(mustChangePassword);
-        user.setActive(true); // Assuming active if token is valid and user exists
+        user.setActive(true);
 
         return new UsernamePasswordAuthenticationToken(user, token, authorities);
     }

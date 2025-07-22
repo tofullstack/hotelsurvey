@@ -36,6 +36,6 @@ public class SurveySection {
     private Company company;
 
     @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("id ASC") // Order questions for consistent output
+    @OrderBy("id ASC")
     private List<Question> questions;
 }

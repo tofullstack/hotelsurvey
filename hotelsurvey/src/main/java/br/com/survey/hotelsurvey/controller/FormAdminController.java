@@ -15,7 +15,6 @@ import java.util.List;
 @RequestMapping("/api/forms")
 @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
 @CrossOrigin("*")
-// Admin and regular users can manage forms
 public class FormAdminController {
 
     @Autowired
@@ -62,4 +61,14 @@ public class FormAdminController {
         SurveySectionDto preview = formAdminService.previewForm(id);
         return ResponseEntity.ok(preview);
     }
+
+
+    @GetMapping("/search")
+    public ResponseEntity<List<SurveySectionDto>> searchForms(
+            @RequestParam(required = false) String companyName,
+            @RequestParam(defaultValue = "todos") String status){
+        List<SurveySectionDto> results= formAdminService.searchForms(companyName, status);
+        return ResponseEntity.ok(results);
+    }
+
 }

@@ -206,7 +206,7 @@ public class FormAdminService {
         }
     }
 
-    // Helper para converter entidade em DTO
+    // helper para converter entidade em DTO
     private SurveySectionDto convertToSurveySectionDto(SurveySection entity) {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(entity.getId());
@@ -228,7 +228,7 @@ public class FormAdminService {
         dto.setLabel(entity.getLabel());
         dto.setType(entity.getType());
         dto.setMandatory(entity.getMandatory());
-        dto.setOptions(entity.getOptions()); // Agora entity.getOptions() retorna List<String>
+        dto.setOptions(entity.getOptions()); // retorna List<String>
         return dto;
     }
 
@@ -239,7 +239,22 @@ public class FormAdminService {
         entity.setLabel(dto.getLabel());
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
-        entity.setOptions(dto.getOptions()); // Agora dto.getOptions() fornece List<String>
+        entity.setOptions(dto.getOptions()); // fornece List<String>
         return entity;
+    }
+
+
+    // método para filtro de pesquisa de formularios baseado em nome da empresa e status
+    public List<SurveySectionDto> searchForms(String companyName, String status){
+        List<SurveySection> forms= surveySectionRepository.findAll();
+         return forms.stream()
+                 .filter(f -> companyName == null || f.getCompany().getName().toLowerCase().contains(companyName.toLowerCase()))
+                 .filter(f-> {
+                     if("ativos".equalsIgnoreCase(status)) return Boolean.TRUE.equals(f.getActive());
+                     if("inativos".equalsIgnoreCase(status)) return Boolean.FALSE.equals(f.getActive());
+                     return true;
+                 })
+                 .map(this::convertToSurveySectionDto)
+                 .collect(Collectors.toList());
     }
 }

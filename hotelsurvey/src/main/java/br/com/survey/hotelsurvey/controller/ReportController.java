@@ -27,6 +27,7 @@ public class ReportController {
      * GET /api/reports/responses?startDate=2024-01-01T00:00:00&endDate=2024-12-31T23:59:59
      * testandono insomnia <-
      * @param companyId (Opcional) Filtra por ID da empresa.
+     * @param companyName (Opcional) Filtra pelo nome da empresa.
      * @param language (Opcional) Filtra por idioma.
      * @param startDate (Opcional) Data de início para o filtro (formato ISO: YYYY-MM-DDTHH:mm:ss).
      * @param endDate (Opcional) Data de fim para o filtro (formato ISO: YYYY-MM-DDTHH:mm:ss).
@@ -35,16 +36,16 @@ public class ReportController {
     @GetMapping("/responses")
     public ResponseEntity<List<SurveyResponseDetailDto>> getSurveyResponses(
             @RequestParam(required = false) Long companyId,
+            @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String language,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        List<SurveyResponseDetailDto> responses = reportService.getFilteredSurveyResponses(companyId, language, startDate, endDate);
+        List<SurveyResponseDetailDto> responses = reportService.getFilteredSurveyResponses(companyId, companyName, language, startDate, endDate);
         return ResponseEntity.ok(responses);
     }
-
     /**
-     * Retorna os detalhes de uma resposta de formulário específica.
+     * retorna os detalhes de uma resposta de formulário específica.
      * GET /api/reports/responses/{id}
      *
      * @param id ID da resposta do formulário.

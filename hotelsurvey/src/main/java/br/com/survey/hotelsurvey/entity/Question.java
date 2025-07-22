@@ -32,9 +32,9 @@ public class Question {
     @Column(nullable = false)
     private Boolean mandatory = false;
 
-    // For CHOICE and SCALE types
-    @Convert(converter = ListToJsonConverter.class)
-    private List<String> options; // Store as comma-separated string or JSON
+
+    @Convert(converter = ListToJsonConverter.class) //para choice e scale
+    private List<String> options;
 
     private Boolean required;
 }

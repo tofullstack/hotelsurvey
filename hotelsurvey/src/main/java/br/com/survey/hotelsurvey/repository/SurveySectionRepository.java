@@ -11,6 +11,11 @@ public interface SurveySectionRepository extends JpaRepository<SurveySection, Lo
     boolean existsByNameAndLanguageAndCompanyId(String name, String language, Long companyId);
     Optional<SurveySection> findByIdAndCompanyId(Long id, Long companyId);
 
-    // NOVO MÉTODO PARA API PÚBLICA  para tratamento do QRCODE no frontend
+    /* NOVO MÉTODO PARA API PÚBLICA  para tratamento do QRCODE no frontend*/
     Optional<SurveySection> findByIdAndCompanyIdAndLanguageAndActiveTrue(Long id, Long companyId, String language);
+
+
+
+
+
 }

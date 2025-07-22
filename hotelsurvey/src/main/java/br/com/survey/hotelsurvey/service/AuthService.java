@@ -97,12 +97,12 @@ public class AuthService {
      */
     @Transactional
     public UserDto createUser(UserCreationRequest request) {
-        // O sistema deve impedir a criação de logins duplicados.
+        // o sistema deve impedir a criação de logins duplicados.
         if (userRepository.existsByLogin(request.getLogin())) {
             throw new DuplicateEntryException("Login already exists.");
         }
 
-        // Validação da política de senhas
+        // validação da política de senhas
         if (!PASSWORD_PATTERN.matcher(request.getPassword()).matches()) {
             throw new ValidationException("Password does not meet the requirements: at least 8 characters, one uppercase, one lowercase, one number.");
         }
@@ -111,8 +111,8 @@ public class AuthService {
         user.setLogin(request.getLogin());
         user.setPassword(passwordEncoder.encode(request.getPassword())); // Codifica a senha
         user.setProfile(request.getProfile());
-        user.setMustChangePassword(true); // Ao realizar o primeiro login, o usuário será obrigado a trocar a senha padrão
-        user.setActive(true); // Novo usuário é ativo por padrão
+        user.setMustChangePassword(true); // ao realizar o primeiro login, o usuário será obrigado a trocar a senha padrão
+        user.setActive(true); // novo usuário é ativo por padrão
 
         if (request.getCompanyId() != null) {
             Company company = companyRepository.findById(request.getCompanyId())
@@ -136,18 +136,18 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
-        // Valida a senha atual
+        // valida a senha atual
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new ValidationException("Current password does not match.");
         }
 
-        // Valida a nova senha com a política de senhas
+        // valida a nova senha com a política de senhas
         if (!PASSWORD_PATTERN.matcher(request.getNewPassword()).matches()) {
             throw new ValidationException("New password does not meet the requirements: at least 8 characters, one uppercase, one lowercase, one number.");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        user.setMustChangePassword(false); // Senha trocada, não precisa mais trocar
+        user.setMustChangePassword(false); // senha trocada, não precisa mais trocar
         userRepository.save(user);
     }
 

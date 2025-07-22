@@ -8,6 +8,7 @@ import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.repository.SurveyResponseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils; // Import for StringUtils
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,14 +47,16 @@ public class ReportService {
      * Busca respostas de formulários filtradas por empresa e/ou idioma e/ou período.
      * Este é um exemplo básico; pode ser expandido com Specification ou QueryDsl para filtros mais complexos.
      *
-     * @param companyId (Opcional) Filtra por ID da empresa.
-     * @param language (Opcional) Filtra por idioma.
-     * @param startDate (Opcional) Filtra respostas a partir desta data/hora.
-     * @param endDate (Opcional) Filtra respostas até esta data/hora.
+     * @param companyId   (Opcional) Filtra por ID da empresa.
+     * @param companyName (Opcional) Filtra pelo nome da empresa (parcial e case-insensitive).
+     * @param language    (Opcional) Filtra por idioma.
+     * @param startDate   (Opcional) Filtra respostas a partir desta data/hora.
+     * @param endDate     (Opcional) Filtra respostas até esta data/hora.
      * @return Lista de SurveyResponseDetailDto.
      */
     public List<SurveyResponseDetailDto> getFilteredSurveyResponses(
             Long companyId,
+            String companyName, // New parameter
             String language,
             LocalDateTime startDate,
             LocalDateTime endDate) {
@@ -65,6 +68,12 @@ public class ReportService {
 
         return responses.stream()
                 .filter(response -> companyId == null || response.getCompany().getId().equals(companyId))
+                // --- START: Added filter for companyName ---
+                .filter(response -> !StringUtils.hasText(companyName) ||
+                        (response.getCompany() != null &&
+                                StringUtils.hasText(response.getCompany().getName()) &&
+                                response.getCompany().getName().toLowerCase().contains(companyName.toLowerCase())))
+                // --- END: Added filter for companyName ---
                 .filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
                 .filter(response -> startDate == null || response.getResponseDate().isAfter(startDate) || response.getResponseDate().isEqual(startDate))
                 .filter(response -> endDate == null || response.getResponseDate().isBefore(endDate) || response.getResponseDate().isEqual(endDate))
