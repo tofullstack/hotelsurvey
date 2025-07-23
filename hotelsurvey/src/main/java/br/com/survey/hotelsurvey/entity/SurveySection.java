@@ -22,8 +22,8 @@ public class SurveySection {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "deny_use", nullable = false)
-    private Boolean denyUse = false;
+//    @Column(name = "deny_use", nullable = false)
+//    private Boolean denyUse = false;
 
     @Column(nullable = false)
     private String language;

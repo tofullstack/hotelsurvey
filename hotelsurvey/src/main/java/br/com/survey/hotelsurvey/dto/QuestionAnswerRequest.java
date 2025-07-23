@@ -16,7 +16,7 @@ public class QuestionAnswerRequest {
     @NotNull(message = "Survey Section ID cannot be null")
     private Long surveySectionId;
 
-    @NotBlank(message = "Answer value cannot be blank for questions that require a response")
+    //@NotBlank(message = "Answer value cannot be blank for questions that require a response")
     private String answerValue;
 
     // usado para perguntas do tipo 'denyUse' (se o hóspede não utilizou o serviço)

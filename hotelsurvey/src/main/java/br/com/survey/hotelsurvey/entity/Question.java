@@ -23,6 +23,9 @@ public class Question {
     private SurveySection surveySection;
 
     @Column(nullable = false)
+    private Boolean deniable = true; // ou false, se por padrão não quiser permitir negar
+
+    @Column(nullable = false)
     private String label;
 
     @Enumerated(EnumType.STRING)

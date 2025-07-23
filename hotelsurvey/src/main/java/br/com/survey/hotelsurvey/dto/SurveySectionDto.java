@@ -19,7 +19,7 @@ public class SurveySectionDto {
     @NotBlank(message = "Section name cannot be blank")
     private String name;
 
-    private Boolean denyUse = false;
+//    private Boolean denyUse = false;
 
     @NotBlank(message = "Language cannot be blank")
     private String language;

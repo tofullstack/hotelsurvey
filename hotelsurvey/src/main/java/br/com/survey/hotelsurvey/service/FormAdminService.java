@@ -55,7 +55,7 @@ public class FormAdminService {
 
         SurveySection surveySection = new SurveySection();
         surveySection.setName(dto.getName());
-        surveySection.setDenyUse(dto.getDenyUse());
+//        surveySection.setDenyUse(dto.getDenyUse());
         surveySection.setLanguage(dto.getLanguage());
         surveySection.setCompany(company);
         surveySection.setActive(dto.getActive());
@@ -103,7 +103,7 @@ public class FormAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId()));
 
         existingSection.setName(dto.getName());
-        existingSection.setDenyUse(dto.getDenyUse());
+//        existingSection.setDenyUse(dto.getDenyUse());
         existingSection.setLanguage(dto.getLanguage());
         existingSection.setCompany(company);
         existingSection.setActive(dto.getActive());
@@ -211,7 +211,7 @@ public class FormAdminService {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-        dto.setDenyUse(entity.getDenyUse());
+//        dto.setDenyUse(entity.getDenyUse());
         dto.setLanguage(entity.getLanguage());
         // Garante que a company não é nula antes de acessar o ID
         dto.setCompanyId(entity.getCompany() != null ? entity.getCompany().getId() : null);

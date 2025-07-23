@@ -42,7 +42,7 @@ public class PublicApiService {
         PublicSurveySectionDto dto = new PublicSurveySectionDto();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-        dto.setDenyUse(entity.getDenyUse()); // O campo denyUse permite ao hóspede informar que não utilizou aquele serviço.
+//        dto.setDenyUse(entity.getDenyUse()); // O campo denyUse permite ao hóspede informar que não utilizou aquele serviço.
         dto.setQuestions(entity.getQuestions().stream()
                 .map(question -> {
                     PublicQuestionDto questionDto = new PublicQuestionDto();
