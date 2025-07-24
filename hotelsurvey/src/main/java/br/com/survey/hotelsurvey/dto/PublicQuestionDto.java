@@ -13,13 +13,9 @@ public class PublicQuestionDto {
     private Long id;
     private String label;
     private String type;
-    private Boolean required;
     private Boolean mandatory;
+    private Boolean required;
     private List<String> options;
-
 }
 
-//public class PublicQuestionDto {
-//    private Long id;
-//    private String label;
-//}
+

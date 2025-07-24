@@ -1,10 +1,9 @@
 package br.com.survey.hotelsurvey.service;
 
 import br.com.survey.hotelsurvey.dto.QuestionDto;
+import br.com.survey.hotelsurvey.dto.QuestionTranslationDto;
 import br.com.survey.hotelsurvey.dto.SurveySectionDto;
-import br.com.survey.hotelsurvey.entity.Company;
-import br.com.survey.hotelsurvey.entity.Question;
-import br.com.survey.hotelsurvey.entity.SurveySection;
+import br.com.survey.hotelsurvey.entity.*;
 import br.com.survey.hotelsurvey.exception.DuplicateEntryException;
 import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.exception.ValidationException;
@@ -43,12 +42,12 @@ public class FormAdminService {
      */
     @Transactional
     public SurveySectionDto createForm(SurveySectionDto dto) {
-        // Valida nome único por empresa/idioma
+        // valida nome único por empresa/idioma
         if (surveySectionRepository.existsByNameAndLanguageAndCompanyId(dto.getName(), dto.getLanguage(), dto.getCompanyId())) {
             throw new DuplicateEntryException("A form with this name, language, and company already exists.");
         }
 
-        validateQuestions(dto.getQuestions()); // Valida perguntas (não vazias, não duplicadas)
+        validateQuestions(dto.getQuestions()); // valida perguntas (não vazias, não duplicadas)
 
         Company company = companyRepository.findById(dto.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId()));
@@ -62,12 +61,12 @@ public class FormAdminService {
 
         SurveySection savedSection = surveySectionRepository.save(surveySection);
 
-        // Associa e salva as perguntas
+        // associa e salva as perguntas
         List<Question> questions = dto.getQuestions().stream()
                 .map(qDto -> convertToQuestionEntity(qDto, savedSection))
                 .collect(Collectors.toList());
-        questionRepository.saveAll(questions); // Salva as perguntas associadas
-        savedSection.setQuestions(questions); // Atualiza a lista na entidade em memória
+        questionRepository.saveAll(questions); // salva as perguntas associadas
+        savedSection.setQuestions(questions); // atualiza a lista na entidade em memória
 
         return convertToSurveySectionDto(savedSection);
     }
@@ -87,8 +86,8 @@ public class FormAdminService {
         SurveySection existingSection = surveySectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + id));
 
-        // Valida nome único para atualizações
-        // Verifica se houve mudança no nome, idioma ou empresa para revalidar a unicidade
+        // valida nome único para atualizações
+        // verifica se houve mudança no nome, idioma ou empresa para revalidar a unicidade
         if (!existingSection.getName().equals(dto.getName()) ||
                 !existingSection.getLanguage().equals(dto.getLanguage()) ||
                 !existingSection.getCompany().getId().equals(dto.getCompanyId())) {
@@ -195,16 +194,24 @@ public class FormAdminService {
 
         Set<String> distinctLabels = new HashSet<>();
         for (QuestionDto qDto : questions) {
-            // Impedir cadastro de perguntas em branco.
-            if (!org.springframework.util.StringUtils.hasText(qDto.getLabel())) {
-                throw new ValidationException("Question label cannot be blank.");
+            // pega a tradução principal (pt-BR ou a primeira da lista)
+            String mainLabel = qDto.getTranslations().stream()
+                    .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
+                    .map(t -> t.getLabel())
+                    .findFirst()
+                    .orElseThrow(() -> new ValidationException("Each question must have at least one translation in 'pt-BR'."));
+
+            if (!org.springframework.util.StringUtils.hasText(mainLabel)) {
+                throw new ValidationException("Question translation label cannot be blank.");
             }
-            // Impedir cadastro de perguntas duplicadas no mesmo formulário.
-            if (!distinctLabels.add(qDto.getLabel().trim().toLowerCase())) {
-                throw new ValidationException("Duplicate question labels within the same form are not allowed: " + qDto.getLabel());
+
+            // impede duplicadas com base na label traduzida
+            if (!distinctLabels.add(mainLabel.trim().toLowerCase())) {
+                throw new ValidationException("Duplicate question labels (in pt-BR) are not allowed: " + mainLabel);
             }
         }
     }
+
 
     // helper para converter entidade em DTO
     private SurveySectionDto convertToSurveySectionDto(SurveySection entity) {
@@ -213,7 +220,7 @@ public class FormAdminService {
         dto.setName(entity.getName());
 //        dto.setDenyUse(entity.getDenyUse());
         dto.setLanguage(entity.getLanguage());
-        // Garante que a company não é nula antes de acessar o ID
+        //garante que a company não é nula antes de acessar o ID
         dto.setCompanyId(entity.getCompany() != null ? entity.getCompany().getId() : null);
         dto.setActive(entity.getActive());
         dto.setQuestions(entity.getQuestions().stream()
@@ -225,10 +232,18 @@ public class FormAdminService {
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
-        dto.setLabel(entity.getLabel());
-        dto.setType(entity.getType());
+        dto.setType(entity.getType().name()); // pega o nome do enum como String para o DTO
         dto.setMandatory(entity.getMandatory());
-        dto.setOptions(entity.getOptions()); // retorna List<String>
+        dto.setOptions(entity.getOptions());
+
+        dto.setTranslations(
+                entity.getTranslations().stream().map(t -> {
+                    var tDto = new QuestionTranslationDto();
+                    tDto.setLabel(t.getLabel());
+                    tDto.setLanguage(t.getLanguage());
+                    return tDto;
+                }).collect(Collectors.toList())
+        );
         return dto;
     }
 
@@ -236,12 +251,35 @@ public class FormAdminService {
         Question entity = new Question();
         entity.setId(dto.getId());
         entity.setSurveySection(surveySection);
-        entity.setLabel(dto.getLabel());
-        entity.setType(dto.getType());
-        entity.setMandatory(dto.getMandatory());
-        entity.setOptions(dto.getOptions()); // fornece List<String>
+
+        // encontra a primeira tradução disponível para usar como label principal.
+        // se não houver traduções, usa um texto padrão.
+        String primaryLabel = dto.getTranslations().stream()
+                .map(t -> t.getLabel()) // napeia para o label da tradução
+                .filter(org.springframework.util.StringUtils::hasText) // filtra labels não vazios
+                .findFirst() // Pega o primeiro
+                .orElse("Default Question Label"); //sSe nenhuma tradução ou todas vazias, usa este fallback
+
+        entity.setLabel(primaryLabel); // <--- preenche o campo 'label' da entidade Question
+
+        entity.setType(QuestionType.valueOf(dto.getType().toUpperCase()));
+        entity.setMandatory(dto.isMandatory());
+        entity.setOptions(dto.getOptions());
+
+        // converte as traduções para Set
+        entity.setTranslations(
+                dto.getTranslations().stream().map(t -> {
+                    var qt = new QuestionTranslation();
+                    qt.setLabel(t.getLabel());
+                    qt.setLanguage(t.getLanguage());
+                    qt.setQuestion(entity); // garante a referência de volta para a questão
+                    return qt;
+                }).collect(Collectors.toSet()) // coleta para um Set
+        );
+
         return entity;
     }
+
 
 
     // método para filtro de pesquisa de formularios baseado em nome da empresa e status
@@ -256,5 +294,65 @@ public class FormAdminService {
                  })
                  .map(this::convertToSurveySectionDto)
                  .collect(Collectors.toList());
+    }
+
+
+    private QuestionDto convertQuestionToDtoWithPreferredTranslation(Question question, String preferredLanguage) {
+        QuestionDto dto = new QuestionDto();
+        dto.setId(question.getId());
+        dto.setType(question.getType().name()); // converte o Enum QuestionType para String
+        dto.setMandatory(question.getMandatory());
+        dto.setOptions(question.getOptions());
+
+        // Lógica para encontrar o label traduzido:
+        // 1. Tenta encontrar a tradução para o idioma preferencial.
+        // 2. Se não encontrar, tenta encontrar a tradução em pt-BR.
+        // 3. Se ainda não encontrar, pega a primeira tradução disponível.
+        // 4. Se não houver nenhuma tradução, usa um texto padrão.
+        String selectedLabel = question.getTranslations().stream()
+                .filter(t -> t.getLanguage().equalsIgnoreCase(preferredLanguage))
+                .map(QuestionTranslation::getLabel)
+                .findFirst()
+                .orElseGet(() -> question.getTranslations().stream()
+                        .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
+                        .map(QuestionTranslation::getLabel)
+                        .findFirst()
+                        .orElseGet(() -> question.getTranslations().stream()
+                                .map(QuestionTranslation::getLabel)
+                                .findFirst()
+                                .orElse("No translation available (" + preferredLanguage + ")"))); // Fallback final
+
+        // Cria uma lista de QuestionTranslationDto com apenas a tradução selecionada.
+        // Isso é necessário porque o QuestionDto espera uma List<QuestionTranslationDto>.
+        QuestionTranslationDto singleTranslationDto = new QuestionTranslationDto();
+        singleTranslationDto.setLanguage(preferredLanguage); // Pode ser o idioma da tradução encontrada, ou o preferencial
+        singleTranslationDto.setLabel(selectedLabel);
+        dto.setTranslations(Collections.singletonList(singleTranslationDto));
+
+        return dto;
+    }
+
+
+    public SurveySectionDto getFormWithTranslatedQuestions(Long formId, String language) {
+        // 1. Busca o formulário pela ID
+        SurveySection surveySection = surveySectionRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + formId));
+
+        // 2. Mapeia a SurveySection para SurveySectionDto
+        SurveySectionDto dto = new SurveySectionDto();
+        dto.setId(surveySection.getId());
+        dto.setName(surveySection.getName());
+        dto.setLanguage(surveySection.getLanguage()); // Idioma original de criação do formulário
+        dto.setCompanyId(surveySection.getCompany() != null ? surveySection.getCompany().getId() : null);
+        dto.setActive(surveySection.getActive());
+
+        // 3. Processa cada pergunta para obter a tradução correta
+        List<QuestionDto> translatedQuestions = surveySection.getQuestions().stream()
+                .map(question -> convertQuestionToDtoWithPreferredTranslation(question, language))
+                .collect(Collectors.toList());
+
+        dto.setQuestions(translatedQuestions);
+
+        return dto;
     }
 }

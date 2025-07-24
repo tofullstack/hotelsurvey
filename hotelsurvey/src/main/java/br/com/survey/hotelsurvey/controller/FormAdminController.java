@@ -71,4 +71,14 @@ public class FormAdminController {
         return ResponseEntity.ok(results);
     }
 
+
+    @GetMapping("/{id}/translated/{language}")
+    public ResponseEntity<SurveySectionDto> getFormTranslated(
+            @PathVariable Long id,
+            @PathVariable String language) {
+        SurveySectionDto form = formAdminService.getFormWithTranslatedQuestions(id, language);
+        return ResponseEntity.ok(form);
+    }
+
+
 }

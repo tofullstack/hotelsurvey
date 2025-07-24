@@ -2,11 +2,10 @@ package br.com.survey.hotelsurvey.entity;
 
 import br.com.survey.hotelsurvey.config.ListToJsonConverter;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Entity
@@ -14,19 +13,22 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Question {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "survey_section_id", nullable = false)
+    private String label;
+
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "survey_section_id", nullable = false)
+@EqualsAndHashCode.Exclude // excluindo 'surveySection' do equals/hashCode
+@ToString.Exclude     // excluindo 'surveySection' do toString
     private SurveySection surveySection;
 
     @Column(nullable = false)
-    private Boolean deniable = true; // ou false, se por padrão não quiser permitir negar
-
-    @Column(nullable = false)
-    private String label;
+    private Boolean deniable = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -35,11 +37,22 @@ public class Question {
     @Column(nullable = false)
     private Boolean mandatory = false;
 
+    private Boolean required;
 
-    @Convert(converter = ListToJsonConverter.class) //para choice e scale
+    @Convert(converter = ListToJsonConverter.class)
     private List<String> options;
 
-    private Boolean required;
+    // traduções da pergunta
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @EqualsAndHashCode.Exclude // excluindo'translations' do equals/hashCode
+    @ToString.Exclude     // excluindo 'translations' do toString
+    private Set<QuestionTranslation> translations;
+
+    // helper opcional
+    public QuestionTranslation getTranslationByLanguage(String language) {
+        return translations.stream()
+                .filter(t -> t.getLanguage().equalsIgnoreCase(language))
+                .findFirst()
+                .orElse(null);
+    }
 }
-
-
