@@ -30,7 +30,7 @@ public class PublicApiService {
      * @return Lista de PublicSurveySectionDto contendo a estrutura das perguntas.
      */
     public List<PublicSurveySectionDto> getSurveyQuestions(Long companyId, String language) {
-        List<SurveySection> surveySections = surveySectionRepository.findByCompanyIdAndLanguageAndActiveTrue(companyId, language);
+        List<SurveySection> surveySections = surveySectionRepository.findByCompanyIdAndActiveTrue(companyId);
 
         return surveySections.stream()
                 .map(section -> convertToPublicSurveySectionDto(section, language))
@@ -53,7 +53,7 @@ public class PublicApiService {
 
     // NOVO MÉTODO PARA API PÚBLICA
     public PublicSurveySectionDto getSingleSurveySection(Long companyId, String language, Long sectionId) {
-        SurveySection section = surveySectionRepository.findByIdAndCompanyIdAndLanguageAndActiveTrue(sectionId, companyId, language)
+        SurveySection section = surveySectionRepository.findByIdAndCompanyIdAndActiveTrue(sectionId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Survey section with ID " + sectionId + " not found or not active for given company and language."));
         return convertToPublicSurveySectionDto(section, language);
     }

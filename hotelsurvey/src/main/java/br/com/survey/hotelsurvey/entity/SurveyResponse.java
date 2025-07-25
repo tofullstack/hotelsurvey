@@ -24,8 +24,8 @@ public class SurveyResponse {
     private Company company;
 
     // idioma em que a pesquisa foi respondida
-    @Column(nullable = false)
-    private String language;
+//    @Column(nullable = false)
+//    private String language;
 
     // data e hora em que a resposta foi registrada
     @Column(nullable = false)

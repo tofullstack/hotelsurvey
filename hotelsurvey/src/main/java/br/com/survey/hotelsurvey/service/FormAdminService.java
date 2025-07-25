@@ -43,8 +43,9 @@ public class FormAdminService {
     @Transactional
     public SurveySectionDto createForm(SurveySectionDto dto) {
         // valida nome único por empresa/idioma
-        if (surveySectionRepository.existsByNameAndLanguageAndCompanyId(dto.getName(), dto.getLanguage(), dto.getCompanyId())) {
-            throw new DuplicateEntryException("A form with this name, language, and company already exists.");
+
+        if (surveySectionRepository.existsByNameAndCompanyId(dto.getName(), dto.getCompanyId())) {
+            throw new DuplicateEntryException("A form with this name and company already exists.");
         }
 
         validateQuestions(dto.getQuestions()); // valida perguntas (não vazias, não duplicadas)
@@ -54,8 +55,7 @@ public class FormAdminService {
 
         SurveySection surveySection = new SurveySection();
         surveySection.setName(dto.getName());
-//        surveySection.setDenyUse(dto.getDenyUse());
-        surveySection.setLanguage(dto.getLanguage());
+
         surveySection.setCompany(company);
         surveySection.setActive(dto.getActive());
 
@@ -89,10 +89,11 @@ public class FormAdminService {
         // valida nome único para atualizações
         // verifica se houve mudança no nome, idioma ou empresa para revalidar a unicidade
         if (!existingSection.getName().equals(dto.getName()) ||
-                !existingSection.getLanguage().equals(dto.getLanguage()) ||
+               // !existingSection.getLanguage().equals(dto.getLanguage()) ||
                 !existingSection.getCompany().getId().equals(dto.getCompanyId())) {
-            if (surveySectionRepository.existsByNameAndLanguageAndCompanyId(dto.getName(), dto.getLanguage(), dto.getCompanyId())) {
-                throw new DuplicateEntryException("A form with this name, language, and company already exists.");
+
+            if (surveySectionRepository.existsByNameAndCompanyId(dto.getName(), dto.getCompanyId())) {
+                throw new DuplicateEntryException("A form with this name and company already exists.");
             }
         }
 
@@ -102,13 +103,12 @@ public class FormAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId()));
 
         existingSection.setName(dto.getName());
-//        existingSection.setDenyUse(dto.getDenyUse());
-        existingSection.setLanguage(dto.getLanguage());
+
         existingSection.setCompany(company);
         existingSection.setActive(dto.getActive());
 
-        // Atualiza as perguntas: remove as antigas, adiciona as novas/atualizadas
-        // Isso depende do CascadeType.ALL e orphanRemoval=true na relação @OneToMany em SurveySection
+        // atualiza as perguntas: remove as antigas, adiciona as novas/atualizadas
+        // isso depende do CascadeType.ALL e orphanRemoval=true na relação @OneToMany em SurveySection
         existingSection.getQuestions().clear();
         dto.getQuestions().forEach(qDto -> existingSection.getQuestions().add(convertToQuestionEntity(qDto, existingSection)));
 
@@ -187,6 +187,33 @@ public class FormAdminService {
      * @param questions Lista de QuestionDto para validação.
      * @throws ValidationException Se as perguntas forem inválidas.
      */
+//    private void validateQuestions(List<QuestionDto> questions) {
+//        if (questions == null || questions.isEmpty()) {
+//            throw new ValidationException("A survey form must have at least one question.");
+//        }
+//
+//        Set<String> distinctLabels = new HashSet<>();
+//        for (QuestionDto qDto : questions) {
+//            // pega a tradução principal (pt-BR ou a primeira da lista)
+//            String mainLabel = qDto.getTranslations().stream()
+//                    .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
+//                    .map(t -> t.getLabel())
+//                    .findFirst()
+//                    .orElseThrow(() -> new ValidationException("Each question must have at least one translation in 'pt-BR'."));
+//
+//            if (!org.springframework.util.StringUtils.hasText(mainLabel)) {
+//                throw new ValidationException("Question translation label cannot be blank.");
+//            }
+//
+//            // impede duplicadas com base na label traduzida
+//            if (!distinctLabels.add(mainLabel.trim().toLowerCase())) {
+//                throw new ValidationException("Duplicate question labels (in pt-BR) are not allowed: " + mainLabel);
+//            }
+//        }
+//    }
+
+
+    // helper para converter entidade em DTO
     private void validateQuestions(List<QuestionDto> questions) {
         if (questions == null || questions.isEmpty()) {
             throw new ValidationException("A survey form must have at least one question.");
@@ -194,32 +221,24 @@ public class FormAdminService {
 
         Set<String> distinctLabels = new HashSet<>();
         for (QuestionDto qDto : questions) {
-            // pega a tradução principal (pt-BR ou a primeira da lista)
+            // pega o primeiro label de qualquer idioma, se pt-BR não for obrigatório
             String mainLabel = qDto.getTranslations().stream()
-                    .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
+                    // .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage())) // teste: remover se pt-BR não for obrigatório
                     .map(t -> t.getLabel())
+                    .filter(org.springframework.util.StringUtils::hasText) //teste de filtro
                     .findFirst()
-                    .orElseThrow(() -> new ValidationException("Each question must have at least one translation in 'pt-BR'."));
+                    .orElseThrow(() -> new ValidationException("Each question must have at least one non-empty translation label."));
 
-            if (!org.springframework.util.StringUtils.hasText(mainLabel)) {
-                throw new ValidationException("Question translation label cannot be blank.");
-            }
-
-            // impede duplicadas com base na label traduzida
             if (!distinctLabels.add(mainLabel.trim().toLowerCase())) {
-                throw new ValidationException("Duplicate question labels (in pt-BR) are not allowed: " + mainLabel);
+                throw new ValidationException("Duplicate question labels (considering their primary translation) are not allowed: " + mainLabel);
             }
         }
     }
-
-
-    // helper para converter entidade em DTO
     private SurveySectionDto convertToSurveySectionDto(SurveySection entity) {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-//        dto.setDenyUse(entity.getDenyUse());
-        dto.setLanguage(entity.getLanguage());
+
         //garante que a company não é nula antes de acessar o ID
         dto.setCompanyId(entity.getCompany() != null ? entity.getCompany().getId() : null);
         dto.setActive(entity.getActive());
@@ -304,11 +323,11 @@ public class FormAdminService {
         dto.setMandatory(question.getMandatory());
         dto.setOptions(question.getOptions());
 
-        // Lógica para encontrar o label traduzido:
-        // 1. Tenta encontrar a tradução para o idioma preferencial.
-        // 2. Se não encontrar, tenta encontrar a tradução em pt-BR.
-        // 3. Se ainda não encontrar, pega a primeira tradução disponível.
-        // 4. Se não houver nenhuma tradução, usa um texto padrão.
+        // lógica para encontrar o label traduzido:
+        // 1. tenta encontrar a tradução para o idioma preferencial.
+        // 2. se não encontrar, tenta encontrar a tradução em pt-BR.
+        // 3. se ainda não encontrar, pega a primeira tradução disponível.
+        // 4. se não houver nenhuma tradução, usa um texto padrão.
         String selectedLabel = question.getTranslations().stream()
                 .filter(t -> t.getLanguage().equalsIgnoreCase(preferredLanguage))
                 .map(QuestionTranslation::getLabel)
@@ -322,8 +341,8 @@ public class FormAdminService {
                                 .findFirst()
                                 .orElse("No translation available (" + preferredLanguage + ")"))); // Fallback final
 
-        // Cria uma lista de QuestionTranslationDto com apenas a tradução selecionada.
-        // Isso é necessário porque o QuestionDto espera uma List<QuestionTranslationDto>.
+        // cria uma lista de QuestionTranslationDto com apenas a tradução selecionada.
+        // QuestionDto espera uma List<QuestionTranslationDto>.
         QuestionTranslationDto singleTranslationDto = new QuestionTranslationDto();
         singleTranslationDto.setLanguage(preferredLanguage); // Pode ser o idioma da tradução encontrada, ou o preferencial
         singleTranslationDto.setLabel(selectedLabel);
@@ -332,27 +351,85 @@ public class FormAdminService {
         return dto;
     }
 
+    //teste: novo getFormWithTranslateQuestions
+    // Em br.com.survey.hotelsurvey.service.FormAdminService
 
-    public SurveySectionDto getFormWithTranslatedQuestions(Long formId, String language) {
-        // 1. Busca o formulário pela ID
-        SurveySection surveySection = surveySectionRepository.findById(formId)
-                .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + formId));
 
-        // 2. Mapeia a SurveySection para SurveySectionDto
+    /**
+     * Retorna um formulário de satisfação com as perguntas traduzidas para o idioma desejado.
+     * Se uma tradução não for encontrada para uma pergunta específica, um fallback será usado.
+     *
+     * @param id ID do formulário.
+     * @param targetLanguage O idioma desejado para as perguntas (ex: "en-US", "pt-BR").
+     * @return SurveySectionDto do formulário com as perguntas traduzidas.
+     * @throws ResourceNotFoundException Se o formulário não for encontrado.
+     */
+    public SurveySectionDto getFormWithTranslatedQuestions(Long id, String targetLanguage) {
+        SurveySection surveySection = surveySectionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + id));
+
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(surveySection.getId());
         dto.setName(surveySection.getName());
-        dto.setLanguage(surveySection.getLanguage()); // Idioma original de criação do formulário
+
+        // dto.setLanguage(surveySection.getLanguage()); // teste: remover essa linha
         dto.setCompanyId(surveySection.getCompany() != null ? surveySection.getCompany().getId() : null);
         dto.setActive(surveySection.getActive());
 
-        // 3. Processa cada pergunta para obter a tradução correta
+        // teste: adaptar as perguntas para incluir apenas a tradução relevante para o idioma solicitado
         List<QuestionDto> translatedQuestions = surveySection.getQuestions().stream()
-                .map(question -> convertQuestionToDtoWithPreferredTranslation(question, language))
+                .map(questionEntity -> {
+                    // 1. tenta encontrar a tradução exata para o idioma alvo
+                    QuestionTranslation desiredTranslation = questionEntity.getTranslations().stream()
+                            .filter(t -> targetLanguage.equalsIgnoreCase(t.getLanguage()))
+                            .findFirst()
+                            .orElse(null);
+
+                    // 2. se não encontrou, tenta 'pt-BR' como fallback padrão
+                    if (desiredTranslation == null) {
+                        desiredTranslation = questionEntity.getTranslations().stream()
+                                .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
+                                .findFirst()
+                                .orElse(null);
+                    }
+
+                    // 3. se ainda não encontrou, pega a primeira tradução disponível (qualquer idioma)
+                    if (desiredTranslation == null) {
+                        desiredTranslation = questionEntity.getTranslations().stream()
+                                .findFirst()
+                                .orElse(null); // permanece null se não houver NENHUMA tradução
+                    }
+
+                    // cria o QuestionDto
+                    QuestionDto qDto = new QuestionDto();
+                    qDto.setId(questionEntity.getId());
+                    qDto.setType(questionEntity.getType() != null ? questionEntity.getType().name() : null); // mapeia enum para String
+                    qDto.setMandatory(questionEntity.getMandatory());
+                    qDto.setOptions(questionEntity.getOptions());
+
+                    // popula a lista de traduções do DTO com APENASS a tradução encontrada
+                    List<QuestionTranslationDto> translationDtos = new ArrayList<>();
+                    if (desiredTranslation != null) {
+                        QuestionTranslationDto tDto = new QuestionTranslationDto();
+                        tDto.setLanguage(desiredTranslation.getLanguage());
+                        tDto.setLabel(desiredTranslation.getLabel());
+                        translationDtos.add(tDto);
+                    } else {
+                        // teste: adicionar um QuestionTranslationDto de fallback se nenhuma tradução foi encontrada
+                        // ex: com uma mensagem de "Tradução indisponível".
+                        // translationDtos.add(new QuestionTranslationDto("fallback", "Translation not available for this question."));
+
+                    }
+                    qDto.setTranslations(translationDtos); // define a lista com a única (ou fallback) tradução relevante
+
+                    return qDto;
+                })
                 .collect(Collectors.toList());
 
         dto.setQuestions(translatedQuestions);
-
         return dto;
     }
+
+
+
 }

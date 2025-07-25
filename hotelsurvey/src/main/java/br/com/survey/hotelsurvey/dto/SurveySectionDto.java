@@ -19,10 +19,10 @@ public class SurveySectionDto {
     @NotBlank(message = "Section name cannot be blank")
     private String name;
 
-//    private Boolean denyUse = false;
 
-    @NotBlank(message = "Language cannot be blank")
-    private String language;
+//  teste: remover language do form
+//    @NotBlank(message = "Language cannot be blank")
+//    private String language;
 
     @NotNull(message = "Company ID cannot be null")
     private Long companyId;

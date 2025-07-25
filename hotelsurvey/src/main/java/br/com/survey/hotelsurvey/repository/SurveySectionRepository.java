@@ -7,12 +7,17 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SurveySectionRepository extends JpaRepository<SurveySection, Long> {
-    List<SurveySection> findByCompanyIdAndLanguageAndActiveTrue(Long companyId, String language);
-    boolean existsByNameAndLanguageAndCompanyId(String name, String language, Long companyId);
+    List<SurveySection> findByCompanyIdAndActiveTrue(Long companyId);
+   // boolean existsByNameAndLanguageAndCompanyId(String name, String language, Long companyId);
+
+
+    //teste: novo filtro para tratamento no formadminservice SEM linguagem definida
+    boolean existsByNameAndCompanyId(String name, Long companyId);
+
     Optional<SurveySection> findByIdAndCompanyId(Long id, Long companyId);
 
     /* NOVO MÉTODO PARA API PÚBLICA  para tratamento do QRCODE no frontend*/
-    Optional<SurveySection> findByIdAndCompanyIdAndLanguageAndActiveTrue(Long id, Long companyId, String language);
+    Optional<SurveySection> findByIdAndCompanyIdAndActiveTrue(Long id, Long companyId);
 
 
 

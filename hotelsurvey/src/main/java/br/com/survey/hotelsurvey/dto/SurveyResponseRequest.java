@@ -17,8 +17,8 @@ public class SurveyResponseRequest {
     @NotNull(message = "Company ID cannot be null") //padronizando em ingles
     private Long companyId;
 
-    @NotBlank(message = "Language cannot be blank")
-    private String language;
+//    @NotBlank(message = "Language cannot be blank")
+//    private String language;
 
     // ientificador para o hóspede (pode ser o ID da reserva, email, etc.)
     // para este exemplo, não é obrigatório para permitir respostas anônimas, mas pode ser ajustado

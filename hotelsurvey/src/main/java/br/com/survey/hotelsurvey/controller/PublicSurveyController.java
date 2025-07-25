@@ -55,4 +55,6 @@ public class PublicSurveyController {
         PublicSurveySectionDto surveySection = publicApiService.getSingleSurveySection(companyId, language, sectionId);
         return ResponseEntity.ok(surveySection);
     }
+
+
 }

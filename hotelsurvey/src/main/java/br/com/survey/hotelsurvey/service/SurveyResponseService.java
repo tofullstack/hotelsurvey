@@ -50,7 +50,7 @@ public class SurveyResponseService {
         // 2. Vai criar a entidade SurveyResponse
         SurveyResponse surveyResponse = new SurveyResponse();
         surveyResponse.setCompany(company);
-        surveyResponse.setLanguage(request.getLanguage());
+        //surveyResponse.setLanguage(request.getLanguage());
         surveyResponse.setResponseDate(LocalDateTime.now());
         surveyResponse.setGuestIdentifier(request.getGuestIdentifier());
         surveyResponse.setFreeTextFeedback(request.getFreeTextFeedback());
@@ -63,16 +63,15 @@ public class SurveyResponseService {
         Map<Long, Question> activeQuestions = new HashMap<>();
 
         // Pré-carregar todas as seções e perguntas ativas para a empresa e idioma
-        List<SurveySection> sectionsForCompanyAndLanguage = surveySectionRepository.findByCompanyIdAndLanguageAndActiveTrue(company.getId(), request.getLanguage());
-        for (SurveySection section : sectionsForCompanyAndLanguage) {
+       List<SurveySection> sectionsForCompany = surveySectionRepository.findByCompanyIdAndActiveTrue(company.getId());
+        for (SurveySection section : sectionsForCompany) {
             activeSections.put(section.getId(), section);
-            // Certifique-se de que as perguntas são carregadas com a seção
             for (Question question : section.getQuestions()) {
                 activeQuestions.put(question.getId(), question);
             }
         }
 
-        // Processar e validar cada resposta individual
+        // processar e validar cada resposta individual
         for (QuestionAnswerRequest answerRequest : request.getAnswers()) {
             SurveySection surveySection = activeSections.get(answerRequest.getSurveySectionId());
             if (surveySection == null) {
@@ -84,25 +83,24 @@ public class SurveyResponseService {
                 throw new ValidationException("Question with ID " + answerRequest.getQuestionId() + " is not active, does not exist, or does not belong to section " + answerRequest.getSurveySectionId());
             }
 
-            // --- INÍCIO DAS VALIDAÇÕES AJUSTADAS APÓS REMOVER @NotBlank DO DTO ---
 
-            // Validação 1: Não permitir 'didNotUseService' se a pergunta não for deniável
+            // validação 1: Não permitir 'didNotUseService' se a pergunta não for NEGAVEL
             if (!question.getDeniable() && answerRequest.getDidNotUseService()) {
                 throw new ValidationException("Question '" + question.getLabel() + "' cannot be marked as 'did not use service'. It requires a direct response.");
             }
 
-            // Validação 2: Se a pergunta é obrigatória E o serviço FOI USADO, o valor da resposta NÃO PODE estar em branco.
+            // validação 2: Se a pergunta é obrigatória E o serviço FOI USADO, o valor da resposta NÃO PODE estar em branco.
             if (question.getMandatory() && !answerRequest.getDidNotUseService() && !StringUtils.hasText(answerRequest.getAnswerValue())) {
                 throw new ValidationException("Mandatory question '" + question.getLabel() + "' requires an answer.");
             }
 
-            // Validação 3: Se o serviço NÃO FOI USADO, o valor da resposta DEVE estar em branco.
-            // Isso evita que o usuário preencha algo e marque "não usei".
+            // validação 3: Se o serviço NÃO FOI USADO, o valor da resposta DEVE estar em branco.
+            //isso evita que o usuário preencha algo e marque "não usei".
             if (answerRequest.getDidNotUseService() && StringUtils.hasText(answerRequest.getAnswerValue())) {
                 throw new ValidationException("You cannot provide an answer to a question marked as 'did not use service'. Answer value must be blank.");
             }
 
-            // --- FIM DAS VALIDAÇÕES AJUSTADAS ---
+
 
 
             // Validações específicas por tipo de pergunta, só se o serviço FOI UTILIZADO

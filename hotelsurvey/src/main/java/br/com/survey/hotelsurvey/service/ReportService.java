@@ -68,13 +68,11 @@ public class ReportService {
 
         return responses.stream()
                 .filter(response -> companyId == null || response.getCompany().getId().equals(companyId))
-                // --- START: Added filter for companyName ---
                 .filter(response -> !StringUtils.hasText(companyName) ||
                         (response.getCompany() != null &&
                                 StringUtils.hasText(response.getCompany().getName()) &&
                                 response.getCompany().getName().toLowerCase().contains(companyName.toLowerCase())))
-                // --- END: Added filter for companyName ---
-                .filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
+               // .filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
                 .filter(response -> startDate == null || response.getResponseDate().isAfter(startDate) || response.getResponseDate().isEqual(startDate))
                 .filter(response -> endDate == null || response.getResponseDate().isBefore(endDate) || response.getResponseDate().isEqual(endDate))
                 .map(this::convertToSurveyResponseDetailDto)
@@ -88,7 +86,7 @@ public class ReportService {
         dto.setId(entity.getId());
         dto.setCompanyId(entity.getCompany().getId());
         dto.setCompanyName(entity.getCompany().getName()); // Assume que Company tem um campo 'name'
-        dto.setLanguage(entity.getLanguage());
+        //dto.setLanguage(entity.getLanguage());
         dto.setResponseDate(entity.getResponseDate());
         dto.setGuestIdentifier(entity.getGuestIdentifier());
         dto.setFreeTextFeedback(entity.getFreeTextFeedback());

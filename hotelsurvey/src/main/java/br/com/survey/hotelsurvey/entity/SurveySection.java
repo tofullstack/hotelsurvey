@@ -9,9 +9,11 @@ import java.util.List;
 
 @Data
 @Entity
-@Table(name = "survey_sections", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"name", "language", "company_id"})
-})
+@Table(
+        name = "survey_sections",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"name", "company_id"})
+)
+
 @NoArgsConstructor
 @AllArgsConstructor
 public class SurveySection {
@@ -23,8 +25,9 @@ public class SurveySection {
     private String name;
 
 
-    @Column(nullable = false)
-    private String language;
+    //teste: remover language do formulario
+//    @Column(nullable = false)
+//    private String language;
 
     @Column(nullable = false)
     private Boolean active = true;

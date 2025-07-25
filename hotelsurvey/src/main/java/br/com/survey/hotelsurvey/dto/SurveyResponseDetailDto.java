@@ -14,7 +14,7 @@ public class SurveyResponseDetailDto {
     private Long id;
     private Long companyId;
     private String companyName;
-    private String language;
+//    private String language;
     private LocalDateTime responseDate;
     private String guestIdentifier;
     private String freeTextFeedback;
