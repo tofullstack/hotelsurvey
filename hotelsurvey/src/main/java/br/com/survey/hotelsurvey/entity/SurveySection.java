@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.ToString; // Importe ToString
 
 import java.util.List;
 
@@ -13,7 +14,6 @@ import java.util.List;
         name = "survey_sections",
         uniqueConstraints = @UniqueConstraint(columnNames = {"name", "company_id"})
 )
-
 @NoArgsConstructor
 @AllArgsConstructor
 public class SurveySection {
@@ -24,19 +24,20 @@ public class SurveySection {
     @Column(nullable = false, unique = true)
     private String name;
 
-
-    //teste: remover language do formulario
-//    @Column(nullable = false)
-//    private String language;
+    @Column(nullable = false)
+    private Boolean conditional = false;
 
     @Column(nullable = false)
     private Boolean active = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
+    // Opcional, mas boa prática: exclua 'company' também se não for essencial no toString para evitar ciclos com a Company
+    // @ToString.Exclude
     private Company company;
 
     @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
+    @ToString.Exclude // <--- Adicione esta linha!
     private List<Question> questions;
 }

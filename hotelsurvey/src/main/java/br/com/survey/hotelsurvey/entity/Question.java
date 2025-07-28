@@ -42,6 +42,14 @@ public class Question {
     @Convert(converter = ListToJsonConverter.class)
     private List<String> options;
 
+
+    //teste: campo helper para formularios condicionais
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private List<ConditionalSectionTrigger> triggers;
+
+
+
     // traduções da pergunta
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @EqualsAndHashCode.Exclude // excluindo'translations' do equals/hashCode

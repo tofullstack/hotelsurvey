@@ -19,11 +19,6 @@ public class SurveySectionDto {
     @NotBlank(message = "Section name cannot be blank")
     private String name;
 
-
-//  teste: remover language do form
-//    @NotBlank(message = "Language cannot be blank")
-//    private String language;
-
     @NotNull(message = "Company ID cannot be null")
     private Long companyId;
 
@@ -32,4 +27,12 @@ public class SurveySectionDto {
     @Valid
     @Size(min = 1, message = "A survey section must have at least one question")
     private List<QuestionDto> questions;
+
+//    public SurveySectionDto(Long id, String name, Long companyId, Boolean active, List<QuestionDto> questions) {
+//        this.id = id;
+//        this.name = name;
+//        this.companyId = companyId; // <-- Atribua o companyId
+//        this.active = active;
+//        this.questions = questions;
+//    }
 }

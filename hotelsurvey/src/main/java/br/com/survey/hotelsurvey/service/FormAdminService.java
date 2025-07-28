@@ -251,10 +251,14 @@ public class FormAdminService {
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
-        dto.setType(entity.getType().name()); // pega o nome do enum como String para o DTO
+        dto.setType(entity.getType()); // AGORA: Define o Enum diretamente
+        dto.setLabel(entity.getLabel()); // ADICIONADO: Mapeia o label
         dto.setMandatory(entity.getMandatory());
+        dto.setDeniable(entity.getDeniable()); // ADICIONADO: Mapeia deniable
+        dto.setRequired(entity.getRequired()); // ADICIONADO: Mapeia required
         dto.setOptions(entity.getOptions());
 
+        // Mapeamento de traduções
         dto.setTranslations(
                 entity.getTranslations().stream().map(t -> {
                     var tDto = new QuestionTranslationDto();
@@ -263,29 +267,29 @@ public class FormAdminService {
                     return tDto;
                 }).collect(Collectors.toList())
         );
+        // Triggers não está sendo mapeado aqui, mas pode ser adicionado se necessário no DTO
         return dto;
     }
-
     private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection) {
         Question entity = new Question();
         entity.setId(dto.getId());
         entity.setSurveySection(surveySection);
 
-        // encontra a primeira tradução disponível para usar como label principal.
-        // se não houver traduções, usa um texto padrão.
         String primaryLabel = dto.getTranslations().stream()
-                .map(t -> t.getLabel()) // napeia para o label da tradução
-                .filter(org.springframework.util.StringUtils::hasText) // filtra labels não vazios
-                .findFirst() // Pega o primeiro
-                .orElse("Default Question Label"); //sSe nenhuma tradução ou todas vazias, usa este fallback
+                .map(t -> t.getLabel())
+                .filter(org.springframework.util.StringUtils::hasText)
+                .findFirst()
+                .orElse("Default Question Label");
 
-        entity.setLabel(primaryLabel); // <--- preenche o campo 'label' da entidade Question
+        entity.setLabel(primaryLabel);
 
-        entity.setType(QuestionType.valueOf(dto.getType().toUpperCase()));
-        entity.setMandatory(dto.isMandatory());
+        entity.setType(dto.getType()); // AGORA: Define o Enum diretamente (DTO já tem QuestionType)
+        entity.setMandatory(dto.getMandatory());
+        entity.setDeniable(dto.getDeniable()); // ADICIONADO: Mapeia deniable
+        entity.setRequired(dto.getRequired()); // ADICIONADO: Mapeia required
         entity.setOptions(dto.getOptions());
 
-        // converte as traduções para Set
+        // Mapeamento de traduções
         entity.setTranslations(
                 dto.getTranslations().stream().map(t -> {
                     var qt = new QuestionTranslation();
@@ -293,7 +297,7 @@ public class FormAdminService {
                     qt.setLanguage(t.getLanguage());
                     qt.setQuestion(entity); // garante a referência de volta para a questão
                     return qt;
-                }).collect(Collectors.toSet()) // coleta para um Set
+                }).collect(Collectors.toSet())
         );
 
         return entity;
@@ -315,19 +319,16 @@ public class FormAdminService {
                  .collect(Collectors.toList());
     }
 
-
     private QuestionDto convertQuestionToDtoWithPreferredTranslation(Question question, String preferredLanguage) {
         QuestionDto dto = new QuestionDto();
         dto.setId(question.getId());
-        dto.setType(question.getType().name()); // converte o Enum QuestionType para String
+        dto.setType(question.getType()); // AGORA: Define o Enum diretamente
         dto.setMandatory(question.getMandatory());
+        dto.setDeniable(question.getDeniable()); // ADICIONADO: Mapeia deniable
+        dto.setRequired(question.getRequired()); // ADICIONADO: Mapeia required
         dto.setOptions(question.getOptions());
 
-        // lógica para encontrar o label traduzido:
-        // 1. tenta encontrar a tradução para o idioma preferencial.
-        // 2. se não encontrar, tenta encontrar a tradução em pt-BR.
-        // 3. se ainda não encontrar, pega a primeira tradução disponível.
-        // 4. se não houver nenhuma tradução, usa um texto padrão.
+        // Lógica para encontrar o label traduzido
         String selectedLabel = question.getTranslations().stream()
                 .filter(t -> t.getLanguage().equalsIgnoreCase(preferredLanguage))
                 .map(QuestionTranslation::getLabel)
@@ -341,7 +342,9 @@ public class FormAdminService {
                                 .findFirst()
                                 .orElse("No translation available (" + preferredLanguage + ")"))); // Fallback final
 
-        // cria uma lista de QuestionTranslationDto com apenas a tradução selecionada.
+        dto.setLabel(selectedLabel); // ADICIONADO: Define o label traduzido no DTO
+
+        // Cria uma lista de QuestionTranslationDto com apenas a tradução selecionada.
         // QuestionDto espera uma List<QuestionTranslationDto>.
         QuestionTranslationDto singleTranslationDto = new QuestionTranslationDto();
         singleTranslationDto.setLanguage(preferredLanguage); // Pode ser o idioma da tradução encontrada, ou o preferencial
@@ -364,6 +367,8 @@ public class FormAdminService {
      * @return SurveySectionDto do formulário com as perguntas traduzidas.
      * @throws ResourceNotFoundException Se o formulário não for encontrado.
      */
+
+
     public SurveySectionDto getFormWithTranslatedQuestions(Long id, String targetLanguage) {
         SurveySection surveySection = surveySectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + id));
@@ -371,21 +376,16 @@ public class FormAdminService {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(surveySection.getId());
         dto.setName(surveySection.getName());
-
-        // dto.setLanguage(surveySection.getLanguage()); // teste: remover essa linha
         dto.setCompanyId(surveySection.getCompany() != null ? surveySection.getCompany().getId() : null);
         dto.setActive(surveySection.getActive());
 
-        // teste: adaptar as perguntas para incluir apenas a tradução relevante para o idioma solicitado
         List<QuestionDto> translatedQuestions = surveySection.getQuestions().stream()
                 .map(questionEntity -> {
-                    // 1. tenta encontrar a tradução exata para o idioma alvo
                     QuestionTranslation desiredTranslation = questionEntity.getTranslations().stream()
                             .filter(t -> targetLanguage.equalsIgnoreCase(t.getLanguage()))
                             .findFirst()
                             .orElse(null);
 
-                    // 2. se não encontrou, tenta 'pt-BR' como fallback padrão
                     if (desiredTranslation == null) {
                         desiredTranslation = questionEntity.getTranslations().stream()
                                 .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
@@ -393,21 +393,24 @@ public class FormAdminService {
                                 .orElse(null);
                     }
 
-                    // 3. se ainda não encontrou, pega a primeira tradução disponível (qualquer idioma)
                     if (desiredTranslation == null) {
                         desiredTranslation = questionEntity.getTranslations().stream()
                                 .findFirst()
-                                .orElse(null); // permanece null se não houver NENHUMA tradução
+                                .orElse(null);
                     }
 
-                    // cria o QuestionDto
                     QuestionDto qDto = new QuestionDto();
                     qDto.setId(questionEntity.getId());
-                    qDto.setType(questionEntity.getType() != null ? questionEntity.getType().name() : null); // mapeia enum para String
+                    qDto.setType(questionEntity.getType()); // AGORA: Define o Enum diretamente
                     qDto.setMandatory(questionEntity.getMandatory());
+                    qDto.setDeniable(questionEntity.getDeniable()); // ADICIONADO: Mapeia deniable
+                    qDto.setRequired(questionEntity.getRequired()); // ADICIONADO: Mapeia required
                     qDto.setOptions(questionEntity.getOptions());
 
-                    // popula a lista de traduções do DTO com APENASS a tradução encontrada
+                    // Define o label da pergunta no DTO baseado na tradução encontrada
+                    qDto.setLabel(desiredTranslation != null ? desiredTranslation.getLabel() : questionEntity.getLabel());
+
+
                     List<QuestionTranslationDto> translationDtos = new ArrayList<>();
                     if (desiredTranslation != null) {
                         QuestionTranslationDto tDto = new QuestionTranslationDto();
@@ -415,12 +418,10 @@ public class FormAdminService {
                         tDto.setLabel(desiredTranslation.getLabel());
                         translationDtos.add(tDto);
                     } else {
-                        // teste: adicionar um QuestionTranslationDto de fallback se nenhuma tradução foi encontrada
-                        // ex: com uma mensagem de "Tradução indisponível".
-                        // translationDtos.add(new QuestionTranslationDto("fallback", "Translation not available for this question."));
-
+                        // Considerar adicionar um fallback de tradução aqui se necessário,
+                        // ou garantir que o label esteja setado com o label original da entidade.
                     }
-                    qDto.setTranslations(translationDtos); // define a lista com a única (ou fallback) tradução relevante
+                    qDto.setTranslations(translationDtos);
 
                     return qDto;
                 })
@@ -429,7 +430,6 @@ public class FormAdminService {
         dto.setQuestions(translatedQuestions);
         return dto;
     }
-
 
 
 }

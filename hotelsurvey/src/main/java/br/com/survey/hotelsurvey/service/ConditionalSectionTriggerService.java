@@ -1,0 +1,74 @@
+
+package br.com.survey.hotelsurvey.service;
+
+import br.com.survey.hotelsurvey.dto.ConditionalTriggerRequest;
+import br.com.survey.hotelsurvey.entity.ConditionalSectionTrigger;
+import br.com.survey.hotelsurvey.entity.Question;
+import br.com.survey.hotelsurvey.entity.SurveySection;
+import br.com.survey.hotelsurvey.mapper.SurveySectionMapper;
+import br.com.survey.hotelsurvey.repository.ConditionalSectionTriggerRepository;
+import br.com.survey.hotelsurvey.repository.QuestionRepository;
+import br.com.survey.hotelsurvey.repository.SurveySectionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ConditionalSectionTriggerService {
+
+    private final ConditionalSectionTriggerRepository triggerRepository;
+    private final SurveySectionRepository sectionRepository;
+    private final QuestionRepository questionRepository;
+    private final SurveySectionMapper sectionMapper;
+
+    public List<ConditionalSectionTrigger> findTriggersMatching(Long questionId, String answerValue) {
+        List<ConditionalSectionTrigger> triggers = triggerRepository.findByQuestionId(questionId);
+        return triggers.stream()
+                .filter(trigger -> {
+                    List<String> triggerValues = List.of(trigger.getTriggerValue().split(","));
+                    return triggerValues.contains(answerValue);
+                })
+                .map(trigger -> {
+//                    SurveySection section = sectionRepository
+//                            .findWithQuestionsById(trigger.getTargetSection().getId())
+//                            .orElse(null);
+//                    trigger.setTargetSection(section); // atualiza com a versão "carregada"
+
+                    SurveySection fullSection = sectionRepository.findWithQuestionsById(trigger.getTargetSection().getId()).orElseThrow();
+                    trigger.setTargetSection(fullSection);
+                    sectionMapper.toDto(fullSection);
+                    return trigger;
+                })
+                .filter(trigger -> trigger.getTargetSection() != null)
+                .collect(Collectors.toList());
+
+
+//        return triggers.stream()
+//                .filter(trigger -> {
+//                    // TODO: melhorar pra aceitar faixas e não só valores exatos
+//                    List<String> triggerValues = List.of(trigger.getTriggerValue().split(","));
+//                    return triggerValues.contains(answerValue);
+//                })
+//                .collect(Collectors.toList());
+    }
+
+    public ConditionalSectionTrigger createTrigger(ConditionalTriggerRequest request) {
+        Question question = questionRepository.findById(request.getQuestionId())
+                .orElseThrow(() -> new RuntimeException("Pergunta não encontrada"));
+
+        SurveySection section = sectionRepository.findById(request.getTargetSectionId())
+                .orElseThrow(() -> new RuntimeException("Seção alvo não encontrada"));
+
+
+        ConditionalSectionTrigger trigger = new ConditionalSectionTrigger();
+        trigger.setQuestion(question);
+        trigger.setTargetSection(section);
+        trigger.setTriggerValue(request.getTriggerValue());
+
+        return triggerRepository.save(trigger);
+    }
+}
+

@@ -1,6 +1,7 @@
 package br.com.survey.hotelsurvey.dto;
 
 import br.com.survey.hotelsurvey.config.ListToJsonConverter;
+import br.com.survey.hotelsurvey.entity.ConditionalSectionTrigger;
 import br.com.survey.hotelsurvey.entity.QuestionType;
 import jakarta.persistence.Convert;
 import jakarta.validation.constraints.NotBlank;
@@ -14,15 +15,30 @@ import java.util.List;
 @Setter
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
+//@AllArgsConstructor
 public class QuestionDto {
     private Long id;
-    private String type;
-    private boolean mandatory;
+    private QuestionType type;
+    private String label;
+    private Boolean deniable;
+    private Boolean mandatory;
+    private Boolean required;
     private List<String> options;
 
     @NotEmpty(message = "At least one translation is required")
     private List<QuestionTranslationDto> translations;
 
+    private List<ConditionalSectionTrigger> triggers;
 
+
+    public QuestionDto(Long id, QuestionType type, String label, Boolean deniable, Boolean mandatory, Boolean required, List<String> options) {
+        this.id = id;
+        this.type = type;
+        this.label = label;
+        this.deniable = deniable;
+        this.mandatory = mandatory;
+        this.required = required;
+        this.options = options;
+        // Translations e triggers permanecerão nulos, o que parece ser o comportamento desejado para este DTO.
+    }
 }
