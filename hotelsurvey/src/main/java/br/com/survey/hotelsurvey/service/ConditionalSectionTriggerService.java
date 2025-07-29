@@ -2,12 +2,14 @@
 package br.com.survey.hotelsurvey.service;
 
 import br.com.survey.hotelsurvey.dto.ConditionalTriggerRequest;
+import br.com.survey.hotelsurvey.dto.SurveySectionDto;
 import br.com.survey.hotelsurvey.entity.ConditionalSectionTrigger;
 import br.com.survey.hotelsurvey.entity.Question;
 import br.com.survey.hotelsurvey.entity.SurveySection;
 import br.com.survey.hotelsurvey.mapper.SurveySectionMapper;
 import br.com.survey.hotelsurvey.repository.ConditionalSectionTriggerRepository;
 import br.com.survey.hotelsurvey.repository.QuestionRepository;
+import br.com.survey.hotelsurvey.repository.QuestionTranslationRepository;
 import br.com.survey.hotelsurvey.repository.SurveySectionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class ConditionalSectionTriggerService {
     private final SurveySectionRepository sectionRepository;
     private final QuestionRepository questionRepository;
     private final SurveySectionMapper sectionMapper;
+    private final QuestionTranslationRepository questionTranslationRepository;
 
     public List<ConditionalSectionTrigger> findTriggersMatching(Long questionId, String answerValue) {
         List<ConditionalSectionTrigger> triggers = triggerRepository.findByQuestionId(questionId);
@@ -32,10 +35,6 @@ public class ConditionalSectionTriggerService {
                     return triggerValues.contains(answerValue);
                 })
                 .map(trigger -> {
-//                    SurveySection section = sectionRepository
-//                            .findWithQuestionsById(trigger.getTargetSection().getId())
-//                            .orElse(null);
-//                    trigger.setTargetSection(section); // atualiza com a versão "carregada"
 
                     SurveySection fullSection = sectionRepository.findWithQuestionsById(trigger.getTargetSection().getId()).orElseThrow();
                     trigger.setTargetSection(fullSection);
@@ -45,14 +44,8 @@ public class ConditionalSectionTriggerService {
                 .filter(trigger -> trigger.getTargetSection() != null)
                 .collect(Collectors.toList());
 
-
-//        return triggers.stream()
-//                .filter(trigger -> {
 //                    // TODO: melhorar pra aceitar faixas e não só valores exatos
-//                    List<String> triggerValues = List.of(trigger.getTriggerValue().split(","));
-//                    return triggerValues.contains(answerValue);
-//                })
-//                .collect(Collectors.toList());
+
     }
 
     public ConditionalSectionTrigger createTrigger(ConditionalTriggerRequest request) {
@@ -70,5 +63,23 @@ public class ConditionalSectionTriggerService {
 
         return triggerRepository.save(trigger);
     }
+
+
+    public List<SurveySectionDto> getTriggeredSectionsWithTranslations(Long questionId, String answerValue, String language) {
+        List<ConditionalSectionTrigger> triggers = triggerRepository.findByQuestionId(questionId);
+
+        return triggers.stream()
+                .filter(trigger -> {
+                    List<String> triggerValues = List.of(trigger.getTriggerValue().split(","));
+                    return triggerValues.contains(answerValue);
+                })
+                .map(ConditionalSectionTrigger::getTargetSection)
+                .map(section ->
+                        sectionMapper.toDtoWithTranslatedQuestions(section, language, questionTranslationRepository)
+                )
+                .toList();
+    }
+
+
 }
 

@@ -21,20 +21,7 @@ public class ConditionalSectionTriggerController {
 
     private final ConditionalSectionTriggerService triggerService;
 
-//    @GetMapping("/question/{questionId}/value/{answerValue}")
-//    public List<Long> getTriggeredSectionIds(
-//            @PathVariable Long questionId,
-//            @PathVariable String answerValue
-//    ) {
-//        List<ConditionalSectionTrigger> matchingTriggers = triggerService.findTriggersMatching(questionId, answerValue);
-//
-//        // retorna apenas os IDs das seções que devem ser exibidas
-//        return matchingTriggers.stream()
-//                .map(trigger -> trigger.getTargetSection().getId())
-//                .collect(Collectors.toList());
-//    }
-//
-    // para retorno completo d DTO
+
 
     @GetMapping("/question/{questionId}/value/{answerValue}")
     public List<SurveySectionDto> getTriggeredSections(
@@ -54,6 +41,18 @@ public class ConditionalSectionTriggerController {
         triggerService.createTrigger(request);
         return ResponseEntity.ok().build();
     }
+
+
+    @GetMapping("/conditional-forms")
+    public List<SurveySectionDto> getConditionalForms(
+            @RequestParam Long questionId,
+            @RequestParam String answerValue,
+            @RequestParam String language
+    ) {
+        return triggerService.getTriggeredSectionsWithTranslations(questionId, answerValue, language);
+    }
+
+
 
 
 }

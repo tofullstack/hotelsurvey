@@ -321,7 +321,7 @@ public class FormAdminService {
 
     private QuestionDto convertQuestionToDtoWithPreferredTranslation(Question question, String preferredLanguage) {
         QuestionDto dto = new QuestionDto();
-        dto.setId(question.getId());
+        //dto.setId(question.getId());
         dto.setType(question.getType()); // AGORA: Define o Enum diretamente
         dto.setMandatory(question.getMandatory());
         dto.setDeniable(question.getDeniable()); // ADICIONADO: Mapeia deniable
