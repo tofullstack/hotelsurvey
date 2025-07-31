@@ -28,11 +28,5 @@ public class SurveySectionDto {
     @Size(min = 1, message = "A survey section must have at least one question")
     private List<QuestionDto> questions;
 
-//    public SurveySectionDto(Long id, String name, Long companyId, Boolean active, List<QuestionDto> questions) {
-//        this.id = id;
-//        this.name = name;
-//        this.companyId = companyId; // <-- Atribua o companyId
-//        this.active = active;
-//        this.questions = questions;
-//    }
+
 }

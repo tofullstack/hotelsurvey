@@ -23,6 +23,7 @@ public class FormAdminController {
     @PostMapping
     public ResponseEntity<SurveySectionDto> createForm(@Valid @RequestBody SurveySectionDto dto) {
         SurveySectionDto createdForm = formAdminService.createForm(dto);
+
         return new ResponseEntity<>(createdForm, HttpStatus.CREATED);
     }
 
@@ -72,13 +73,7 @@ public class FormAdminController {
     }
 
 
-//    @GetMapping("/{id}/translated/{language}")
-//    public ResponseEntity<SurveySectionDto> getFormTranslated(
-//            @PathVariable Long id,
-//            @PathVariable String language) {
-//        SurveySectionDto form = formAdminService.getFormWithTranslatedQuestions(id, language);
-//        return ResponseEntity.ok(form);
-//    }
+
 
     // novo endpoint para buscar o formulário por ID e idioma desejado
     @GetMapping("/questions/{id}/language/{targetLanguage}") // ajuste de rota
@@ -88,11 +83,5 @@ public class FormAdminController {
         return formAdminService.getFormWithTranslatedQuestions(id, targetLanguage);
     }
 
-   /* @GetMapping("/questions/language/{targetLanguage}"){
-        public SurveySectionDto getSurveyFormOnlyLanguage(
-                @PathVariable String targetLanguage){
-            return formAdminService.getFormWithTranslateQuestionsOnlyLanguage(targetLanguage);
-        }
-    }*/
 
 }

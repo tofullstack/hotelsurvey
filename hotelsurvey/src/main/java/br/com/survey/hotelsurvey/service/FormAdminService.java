@@ -220,20 +220,45 @@ public class FormAdminService {
         }
 
         Set<String> distinctLabels = new HashSet<>();
+
         for (QuestionDto qDto : questions) {
-            // pega o primeiro label de qualquer idioma, se pt-BR não for obrigatório
+            if (qDto.getTranslations() == null || qDto.getTranslations().isEmpty()) {
+                throw new ValidationException("Each question must have at least one translation.");
+            }
+
+            for (QuestionTranslationDto translation : qDto.getTranslations()) {
+                if (!org.springframework.util.StringUtils.hasText(translation.getLabel())) {
+                    throw new ValidationException("Each question must have at least one non-empty translation label.");
+                }
+                if (!org.springframework.util.StringUtils.hasText(translation.getLanguage())) {
+                    throw new ValidationException("Each translation must have a language.");
+                }
+            }
+
+            // validação principal de label duplicado entre perguntas
             String mainLabel = qDto.getTranslations().stream()
-                    // .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage())) // teste: remover se pt-BR não for obrigatório
-                    .map(t -> t.getLabel())
-                    .filter(org.springframework.util.StringUtils::hasText) //teste de filtro
+                    .map(QuestionTranslationDto::getLabel)
+                    .filter(org.springframework.util.StringUtils::hasText)
                     .findFirst()
                     .orElseThrow(() -> new ValidationException("Each question must have at least one non-empty translation label."));
 
             if (!distinctLabels.add(mainLabel.trim().toLowerCase())) {
                 throw new ValidationException("Duplicate question labels (considering their primary translation) are not allowed: " + mainLabel);
             }
+
+            // dentro de uma pergunta, não pode ter dois translations com o mesmo label + language
+            Set<String> translationKeys = new HashSet<>();
+            for (QuestionTranslationDto translation : qDto.getTranslations()) {
+                String key = translation.getLanguage().trim().toLowerCase() + "::" + translation.getLabel().trim().toLowerCase();
+                if (!translationKeys.add(key)) {
+                    throw new ValidationException("Duplicate translation within a question: " + translation.getLabel() + " [" + translation.getLanguage() + "]");
+                }
+            }
         }
+
     }
+
+
     private SurveySectionDto convertToSurveySectionDto(SurveySection entity) {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(entity.getId());
@@ -251,11 +276,11 @@ public class FormAdminService {
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
-        dto.setType(entity.getType()); // AGORA: Define o Enum diretamente
-        dto.setLabel(entity.getLabel()); // ADICIONADO: Mapeia o label
+        dto.setType(entity.getType());
+        dto.setLabel(entity.getLabel());
         dto.setMandatory(entity.getMandatory());
-        dto.setDeniable(entity.getDeniable()); // ADICIONADO: Mapeia deniable
-        dto.setRequired(entity.getRequired()); // ADICIONADO: Mapeia required
+        dto.setDeniable(entity.getDeniable());
+        dto.setRequired(entity.getRequired());
         dto.setOptions(entity.getOptions());
 
         // Mapeamento de traduções
@@ -267,7 +292,6 @@ public class FormAdminService {
                     return tDto;
                 }).collect(Collectors.toList())
         );
-        // Triggers não está sendo mapeado aqui, mas pode ser adicionado se necessário no DTO
         return dto;
     }
     private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection) {
@@ -283,10 +307,10 @@ public class FormAdminService {
 
         entity.setLabel(primaryLabel);
 
-        entity.setType(dto.getType()); // AGORA: Define o Enum diretamente (DTO já tem QuestionType)
+        entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
-        entity.setDeniable(dto.getDeniable()); // ADICIONADO: Mapeia deniable
-        entity.setRequired(dto.getRequired()); // ADICIONADO: Mapeia required
+        entity.setDeniable(dto.getDeniable());
+        entity.setRequired(dto.getRequired());
         entity.setOptions(dto.getOptions());
 
         // Mapeamento de traduções
