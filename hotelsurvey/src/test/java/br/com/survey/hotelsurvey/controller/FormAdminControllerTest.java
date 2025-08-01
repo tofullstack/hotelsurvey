@@ -9,18 +9,17 @@ import br.com.survey.hotelsurvey.exception.DuplicateEntryException;
 import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.security.JwtAuthenticationFilter;
 import br.com.survey.hotelsurvey.security.JwtTokenProvider;
-import br.com.survey.hotelsurvey.securityConfig.TestSecurityConfig;
+
 import br.com.survey.hotelsurvey.service.FormAdminService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.ValidationException;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-//import org.springframework.boot.test.mock.mockito.MockitoBean;
-import org.springframework.context.annotation.Import;
+
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,17 +30,13 @@ import java.util.List;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 
 
 
-/*@WebMvcTest(FormAdminController.class) // anotação para testar apenas a camada web
-@Import(TestSecurityConfig.class)
-@AutoConfigureMockMvc(addFilters = false)
-@DisplayName("FormAdminController Tests")*/
+
 @WebMvcTest(
         controllers = FormAdminController.class,
         excludeAutoConfiguration = {SecurityAutoConfiguration.class}
@@ -72,6 +67,7 @@ public class FormAdminControllerTest {
     * */
 
     @Test
+    @DisplayName("Deve criar um novo formulario com sucesso STATUS: 201")
     void shouldCreateFormSuccessfully() throws Exception {
         SurveySectionDto requestDto = new SurveySectionDto();
         requestDto.setName("Academia");
@@ -93,9 +89,10 @@ public class FormAdminControllerTest {
     }
 
     /*Cenário Sucesso @@
-    * Retorna todos os formulários com status 200 @*/
+    * Retorna todos os formularios com status 200 @*/
 
     @Test
+    @DisplayName("Deve retornar uma lista com todos os formularios STATUS: 200")
     void shouldReturnAllForms() throws Exception {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(1L);
@@ -112,6 +109,7 @@ public class FormAdminControllerTest {
     * 200 Retorna uma lista com os formulários filtrados pelo STATUS e EMPRESA */
 
     @Test
+    @DisplayName("Deve retornar uma lista de formularios filtrados pelo STATUS e EMPRESA  STATUS 200")
     void shouldSearchFormsByCompanyAndStatus() throws Exception {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(1L);
@@ -129,6 +127,7 @@ public class FormAdminControllerTest {
     /* Cenário de Sucesso @@
     * Retorna 200 com o formulário traduzido @*/
     @Test
+    @DisplayName("Deve traduzir o formulario com sucesso STATUS: 200")
     void shouldReturnTranslatedFormSuccessfully() throws Exception {
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(10L);
@@ -148,6 +147,7 @@ public class FormAdminControllerTest {
     * */
 
     @Test
+    @DisplayName("Deve retornar BadRequest ao criar um formulario com erros de validacao STATUS: 400")
     void shouldReturn400WhenValidationFails() throws Exception {
         SurveySectionDto invalidDto = new SurveySectionDto(); // falta campo obrigatório
 
@@ -163,18 +163,16 @@ public class FormAdminControllerTest {
 
 
     @Test
+    @DisplayName("Deve retornar DuplicateEntryException ao criar um formulario duplicado STATUS: 409")
     void shouldReturn409WhenDuplicateExceptionThrown() throws Exception {
-        // 1. Crie um objeto de tradução válido
         QuestionTranslationDto translation = new QuestionTranslationDto("Texto da Pergunta", "pt-BR");
 
-        // 2. objeto de pergunta válido
+        //objeto de pergunta válido
         QuestionDto question = new QuestionDto();
         question.setTranslations(List.of(translation));
-        // campos do QuestionDto que possam ser obrigatórios
         question.setType(QuestionType.TEXT);
         question.setLabel("Título da Pergunta");
 
-        // 3. objeto SurveySectionDto válido, com a pergunta válida
         SurveySectionDto dto = new SurveySectionDto();
         dto.setName("Duplicado");
         dto.setCompanyId(1L);
@@ -195,6 +193,7 @@ public class FormAdminControllerTest {
     * */
 
     @Test
+    @DisplayName("Deve retornar ResourceNotFound quando nao encontra o formulario pelo ID STATUS: 404")
     void shouldReturn404WhenFormNotFound() throws Exception {
         when(formAdminService.getFormById(999L))
                 .thenThrow(new ResourceNotFoundException("Form not found"));
@@ -207,6 +206,7 @@ public class FormAdminControllerTest {
     /* Cenário Falha @@
     * Retorna uma lista vazia quando nenhum formulário existe @*/
     @Test
+    @DisplayName("Deve retornar uma lista vazia quando nenhum formulario existe STATUS: 200")
     void shouldReturnEmptyListWhenNoFormsExist() throws Exception {
         when(formAdminService.getAllForms()).thenReturn(Collections.emptyList());
 
@@ -219,6 +219,7 @@ public class FormAdminControllerTest {
     * Retorna 500*/
 
     @Test
+    @DisplayName("Deve retornar InternalServerError STATUS: 500")
     void shouldHandleUnexpectedError() throws Exception {
         when(formAdminService.getAllForms()).thenThrow(new RuntimeException("Oops"));
 
@@ -231,6 +232,7 @@ public class FormAdminControllerTest {
     /* Cenário de Falha @@
     * Retorna 404 ao criar um formulário @*/
     @Test
+    @DisplayName("Deve retornar BadRequest ao criar um formulario com campos nulos STATUS: 404")
     void shouldReturnValidationExceptionOnCreate() throws Exception {
         // DTO com campos inválidos
         SurveySectionDto dto = new SurveySectionDto();

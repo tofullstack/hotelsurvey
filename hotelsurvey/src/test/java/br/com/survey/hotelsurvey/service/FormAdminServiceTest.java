@@ -93,7 +93,7 @@ public class FormAdminServiceTest {
     * Criação de um Formulário com nome único e perguntas válidas @
     */
     @Test
-    @DisplayName("Deve criar um novo formulário quando as perguntas forem válidas e o nome único")
+    @DisplayName("Deve criar um novo formulario quando as perguntas forem validas e o nome unico")
     void shouldCreateFormSuccessfully() {
         // mock do comportamento do repositório
         when(surveySectionRepository.existsByNameAndCompanyId(anyString(), anyLong())).thenReturn(false);
@@ -117,7 +117,7 @@ public class FormAdminServiceTest {
     * Nome de Formulário Duplicado @
     * */
     @Test
-    @DisplayName("Deve retornar throw DuplicateEntryException quando criar o formulário com nome já existente para a mesma empresa")
+    @DisplayName("Deve retornar DuplicateEntryException quando o nome ja for existente para a mesma empresa na criacao do formulario")
     void shouldThrowDuplicateEntryExceptionWhenNameExists() {
         // mock para simular nome duplicado
         when(surveySectionRepository.existsByNameAndCompanyId(anyString(), anyLong())).thenReturn(true);
@@ -138,13 +138,12 @@ public class FormAdminServiceTest {
     */
 
     @Test
-    @DisplayName("Deve retornar throw ResourceNotFoundException quando a empresa não é encontrada durante a criação.")
+    @DisplayName("Deve retornar ResourceNotFoundException quando a empresa nao e encontrada durante a criacao.")
     void shouldThrowResourceNotFoundExceptionWhenCompanyNotFound() {
-        // Mock para simular empresa não encontrada
+        // mock para simular empresa não encontrada
         when(surveySectionRepository.existsByNameAndCompanyId(anyString(), anyLong())).thenReturn(false);
         when(companyRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        // Ação e Verificação da exceção
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () ->
                 formAdminService.createForm(validSurveySectionDto)
         );
@@ -158,7 +157,7 @@ public class FormAdminServiceTest {
     * Lista vazia ou nula @
     * */
     @Test
-    @DisplayName("Deve retornar throw ValidationException quando as questões da lista são nulas durante a criação do formulário")
+    @DisplayName("Deve retornar ValidationException quando as questoes da lista sao nulas durante a criacao do formulario")
     void shouldThrowValidationExceptionWhenQuestionsListIsNull() {
         validSurveySectionDto.setQuestions(null); // define lista de perguntas como nula
 
@@ -171,7 +170,7 @@ public class FormAdminServiceTest {
     }
 
     @Test
-    @DisplayName("Deve retornar throw ValidationException quando as questões da lista são vazias durante a criação do formulário")
+    @DisplayName("Deve retornar ValidationException quando as questoes da lista sao vazias durante a criacao do formulario")
     void shouldThrowValidationExceptionWhenQuestionsListIsEmpty() {
         validSurveySectionDto.setQuestions(new ArrayList<>()); // define lista de perguntas como vazia
 
@@ -188,7 +187,7 @@ public class FormAdminServiceTest {
     * */
 
     @Test
-    @DisplayName("Deve retornar throw ValidationException quando o label da tradução da questão está vazio durante a criação do formulário")
+    @DisplayName("Deve retornar ValidationException quando o label da traducao da questao esta vazio durante a criacao do formulario")
     void shouldThrowValidationExceptionWhenQuestionLabelIsEmpty() {
         validQuestionDto.getTranslations().get(0).setLabel("");
         validSurveySectionDto.setQuestions(Collections.singletonList(validQuestionDto));
@@ -204,7 +203,7 @@ public class FormAdminServiceTest {
 
 
     @Test
-    @DisplayName("Deve retornar throw ValidationException quando o label de tradução da questão está nulo durante a criação do formulário.")
+    @DisplayName("Deve retornar ValidationException quando o label de traducao da questao esta nulo durante a criacao do formulario.")
     void shouldThrowValidationExceptionWhenQuestionLabelIsNull() {
         validQuestionDto.getTranslations().get(0).setLabel(null); // tradução pt-BR nula
         validSurveySectionDto.setQuestions(Collections.singletonList(validQuestionDto));
@@ -222,9 +221,9 @@ public class FormAdminServiceTest {
     * */
 
     @Test
-    @DisplayName("Deve retornar throw ValidationException quando as labels das questões duplicadas durante a criação do formulário.")
+    @DisplayName("Deve retornar ValidationException quando as labels das questoes forem duplicadas durante a criacao do formulario.")
     void shouldThrowValidationExceptionWhenDuplicateQuestionLabels() {
-        //PROBLEMA IDENTIFICADO: Service não fazia a validação do idioma e labels iguais
+        //PROBLEMA IDENTIFICADO: service não fazia a validação do idioma e labels iguais
 
         QuestionDto duplicatedQuestionDto = new QuestionDto();
         duplicatedQuestionDto.setType(QuestionType.CHOICE); // pode ser qualquer tipo
