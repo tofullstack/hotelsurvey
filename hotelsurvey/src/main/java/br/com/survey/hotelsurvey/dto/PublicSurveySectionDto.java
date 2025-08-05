@@ -12,6 +12,6 @@ import java.util.List;
 public class PublicSurveySectionDto {
     private Long id;
     private String name;
-//    private Boolean denyUse;
+    private Long companyId;
     private List<PublicQuestionDto> questions;
 }

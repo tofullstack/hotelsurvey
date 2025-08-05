@@ -36,7 +36,7 @@ public class SurveySection {
     // @ToString.Exclude
     private Company company;
 
-    @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @OrderBy("id ASC")
     @ToString.Exclude // <--- Adicione esta linha!
     private List<Question> questions;

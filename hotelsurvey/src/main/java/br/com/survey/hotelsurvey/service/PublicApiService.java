@@ -10,7 +10,7 @@ import br.com.survey.hotelsurvey.repository.SurveySectionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,30 +19,25 @@ public class PublicApiService {
     @Autowired
     private SurveySectionRepository surveySectionRepository;
 
-    /**
-     * Retorna a estrutura das perguntas de satisfação para uma empresa e idioma específicos.
-     * a API deve respeitar o idioma e o hotel passado como parâmetro.
-     * a resposta deve trazer apenas formulários ativos e publicados.
-     * a estrutura contempla os setores avaliáveis (chamados de "formulários") e suas respectivas perguntas.
-     *
-     * @param companyId Identificador único do hotel/estabelecimento.
-     * @param language Idioma do formulário (ex: "pt-BR", "en-US").
-     * @return Lista de PublicSurveySectionDto contendo a estrutura das perguntas.
-     */
-    public List<PublicSurveySectionDto> getSurveyQuestions(Long companyId, String language) {
-        List<SurveySection> surveySections = surveySectionRepository.findByCompanyIdAndActiveTrue(companyId);
+    public PublicSurveySectionDto getSingleSurveySectionByFormIdAndLanguage(Long formId, String language) {
+        Optional<SurveySection> sectionOptional = surveySectionRepository.findWithQuestionsById(formId);
 
-        return surveySections.stream()
-                .map(section -> convertToPublicSurveySectionDto(section, language))
-                .collect(Collectors.toList());
+        SurveySection section = sectionOptional
+                .orElseThrow(() -> new ResourceNotFoundException("Survey section with ID " + formId + " not found."));
+
+        // Se o formulário não estiver ativo, lança uma exceção.
+        if (!section.getActive()) {
+            throw new ResourceNotFoundException("Survey section with ID " + formId + " not active.");
+        }
+
+        return convertToPublicSurveySectionDto(section, language);
     }
 
-    // helper para converter entidade em DTO público
     private PublicSurveySectionDto convertToPublicSurveySectionDto(SurveySection entity, String language) {
         PublicSurveySectionDto dto = new PublicSurveySectionDto();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-
+        dto.setCompanyId(entity.getCompany().getId()); // <-- ADICIONE ESTA LINHA PARA PREENCHER O CAMPO
         dto.setQuestions(entity.getQuestions().stream()
                 .map(question -> toPublicDto(question, language))
                 .collect(Collectors.toList())
@@ -50,14 +45,6 @@ public class PublicApiService {
 
         return dto;
     }
-
-    // NOVO MÉTODO PARA API PÚBLICA
-    public PublicSurveySectionDto getSingleSurveySection(Long companyId, String language, Long sectionId) {
-        SurveySection section = surveySectionRepository.findByIdAndCompanyIdAndActiveTrue(sectionId, companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Survey section with ID " + sectionId + " not found or not active for given company and language."));
-        return convertToPublicSurveySectionDto(section, language);
-    }
-
 
     public PublicQuestionDto toPublicDto(Question question, String language) {
         PublicQuestionDto dto = new PublicQuestionDto();
@@ -76,7 +63,4 @@ public class PublicApiService {
         dto.setLabel(label);
         return dto;
     }
-
-
-
 }

@@ -1,4 +1,3 @@
-
 package br.com.survey.hotelsurvey.service;
 
 import br.com.survey.hotelsurvey.dto.ConditionalTriggerRequest;
@@ -14,6 +13,7 @@ import br.com.survey.hotelsurvey.repository.SurveySectionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,27 +26,6 @@ public class ConditionalSectionTriggerService {
     private final QuestionRepository questionRepository;
     private final SurveySectionMapper sectionMapper;
     private final QuestionTranslationRepository questionTranslationRepository;
-
-    public List<ConditionalSectionTrigger> findTriggersMatching(Long questionId, String answerValue) {
-        List<ConditionalSectionTrigger> triggers = triggerRepository.findByQuestionId(questionId);
-        return triggers.stream()
-                .filter(trigger -> {
-                    List<String> triggerValues = List.of(trigger.getTriggerValue().split(","));
-                    return triggerValues.contains(answerValue);
-                })
-                .map(trigger -> {
-
-                    SurveySection fullSection = sectionRepository.findWithQuestionsById(trigger.getTargetSection().getId()).orElseThrow();
-                    trigger.setTargetSection(fullSection);
-                    sectionMapper.toDto(fullSection);
-                    return trigger;
-                })
-                .filter(trigger -> trigger.getTargetSection() != null)
-                .collect(Collectors.toList());
-
-//                    // TODO: melhorar pra aceitar faixas e não só valores exatos
-
-    }
 
     public ConditionalSectionTrigger createTrigger(ConditionalTriggerRequest request) {
         Question question = questionRepository.findById(request.getQuestionId())
@@ -70,7 +49,8 @@ public class ConditionalSectionTriggerService {
 
         return triggers.stream()
                 .filter(trigger -> {
-                    List<String> triggerValues = List.of(trigger.getTriggerValue().split(","));
+                    // Converte a string "1,2" para uma lista de strings
+                    List<String> triggerValues = Arrays.asList(trigger.getTriggerValue().split(","));
                     return triggerValues.contains(answerValue);
                 })
                 .map(ConditionalSectionTrigger::getTargetSection)
@@ -79,7 +59,4 @@ public class ConditionalSectionTriggerService {
                 )
                 .toList();
     }
-
-
 }
-

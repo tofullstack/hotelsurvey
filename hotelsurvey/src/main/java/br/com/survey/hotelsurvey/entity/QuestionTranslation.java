@@ -17,6 +17,7 @@ public class QuestionTranslation {
     // relacionamento com a pergunta original
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
+    
     @EqualsAndHashCode.Exclude // excluindo 'question' do equals/hashCode
     @ToString.Exclude
     private Question question;

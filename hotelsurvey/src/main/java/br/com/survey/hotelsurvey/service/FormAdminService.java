@@ -392,60 +392,40 @@ public class FormAdminService {
      * @throws ResourceNotFoundException Se o formulário não for encontrado.
      */
 
-
+    @Transactional
     public SurveySectionDto getFormWithTranslatedQuestions(Long id, String targetLanguage) {
         SurveySection surveySection = surveySectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + id));
 
         SurveySectionDto dto = new SurveySectionDto();
         dto.setId(surveySection.getId());
-        dto.setName(surveySection.getName());
+        dto.setName(surveySection.getName()); // O nome da seção não tem tradução no seu modelo, então ele é mantido como está.
         dto.setCompanyId(surveySection.getCompany() != null ? surveySection.getCompany().getId() : null);
         dto.setActive(surveySection.getActive());
 
         List<QuestionDto> translatedQuestions = surveySection.getQuestions().stream()
                 .map(questionEntity -> {
-                    QuestionTranslation desiredTranslation = questionEntity.getTranslations().stream()
-                            .filter(t -> targetLanguage.equalsIgnoreCase(t.getLanguage()))
-                            .findFirst()
-                            .orElse(null);
-
-                    if (desiredTranslation == null) {
-                        desiredTranslation = questionEntity.getTranslations().stream()
-                                .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
-                                .findFirst()
-                                .orElse(null);
-                    }
-
-                    if (desiredTranslation == null) {
-                        desiredTranslation = questionEntity.getTranslations().stream()
-                                .findFirst()
-                                .orElse(null);
-                    }
-
                     QuestionDto qDto = new QuestionDto();
                     qDto.setId(questionEntity.getId());
-                    qDto.setType(questionEntity.getType()); // AGORA: Define o Enum diretamente
+                    qDto.setType(questionEntity.getType());
                     qDto.setMandatory(questionEntity.getMandatory());
-                    qDto.setDeniable(questionEntity.getDeniable()); // ADICIONADO: Mapeia deniable
-                    qDto.setRequired(questionEntity.getRequired()); // ADICIONADO: Mapeia required
+                    qDto.setDeniable(questionEntity.getDeniable());
+                    qDto.setRequired(questionEntity.getRequired());
                     qDto.setOptions(questionEntity.getOptions());
 
-                    // Define o label da pergunta no DTO baseado na tradução encontrada
-                    qDto.setLabel(desiredTranslation != null ? desiredTranslation.getLabel() : questionEntity.getLabel());
+                    // Encontra a tradução no idioma desejado
+                    String finalQuestionLabel = questionEntity.getTranslations().stream()
+                            .filter(t -> targetLanguage.equalsIgnoreCase(t.getLanguage()))
+                            .map(QuestionTranslation::getLabel)
+                            .findFirst()
+                            .orElseGet(() -> questionEntity.getTranslations().stream() // Fallback 1: pt-BR
+                                    .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
+                                    .map(QuestionTranslation::getLabel)
+                                    .findFirst()
+                                    .orElse(questionEntity.getLabel())); // Fallback 2: Label original da entidade
 
-
-                    List<QuestionTranslationDto> translationDtos = new ArrayList<>();
-                    if (desiredTranslation != null) {
-                        QuestionTranslationDto tDto = new QuestionTranslationDto();
-                        tDto.setLanguage(desiredTranslation.getLanguage());
-                        tDto.setLabel(desiredTranslation.getLabel());
-                        translationDtos.add(tDto);
-                    } else {
-                        // Considerar adicionar um fallback de tradução aqui se necessário,
-                        // ou garantir que o label esteja setado com o label original da entidade.
-                    }
-                    qDto.setTranslations(translationDtos);
+                    qDto.setLabel(finalQuestionLabel);
+                    qDto.setTranslations(Collections.emptyList()); // Envia uma lista vazia, pois o frontend não precisa delas.
 
                     return qDto;
                 })

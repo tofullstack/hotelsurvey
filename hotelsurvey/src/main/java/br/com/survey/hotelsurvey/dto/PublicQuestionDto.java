@@ -15,7 +15,9 @@ public class PublicQuestionDto {
     private String type;
     private Boolean mandatory;
     private Boolean required;
+    private Boolean deniable;
     private List<String> options;
+
 }
 
 
