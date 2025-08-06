@@ -187,30 +187,6 @@ public class FormAdminService {
      * @param questions Lista de QuestionDto para validação.
      * @throws ValidationException Se as perguntas forem inválidas.
      */
-//    private void validateQuestions(List<QuestionDto> questions) {
-//        if (questions == null || questions.isEmpty()) {
-//            throw new ValidationException("A survey form must have at least one question.");
-//        }
-//
-//        Set<String> distinctLabels = new HashSet<>();
-//        for (QuestionDto qDto : questions) {
-//            // pega a tradução principal (pt-BR ou a primeira da lista)
-//            String mainLabel = qDto.getTranslations().stream()
-//                    .filter(t -> "pt-BR".equalsIgnoreCase(t.getLanguage()))
-//                    .map(t -> t.getLabel())
-//                    .findFirst()
-//                    .orElseThrow(() -> new ValidationException("Each question must have at least one translation in 'pt-BR'."));
-//
-//            if (!org.springframework.util.StringUtils.hasText(mainLabel)) {
-//                throw new ValidationException("Question translation label cannot be blank.");
-//            }
-//
-//            // impede duplicadas com base na label traduzida
-//            if (!distinctLabels.add(mainLabel.trim().toLowerCase())) {
-//                throw new ValidationException("Duplicate question labels (in pt-BR) are not allowed: " + mainLabel);
-//            }
-//        }
-//    }
 
 
     // helper para converter entidade em DTO
@@ -265,7 +241,15 @@ public class FormAdminService {
         dto.setName(entity.getName());
 
         //garante que a company não é nula antes de acessar o ID
-        dto.setCompanyId(entity.getCompany() != null ? entity.getCompany().getId() : null);
+//        dto.setCompanyId(entity.getCompany() != null ? entity.getCompany().getId() : null);
+        if (entity.getCompany() != null) {
+            dto.setCompanyId(entity.getCompany().getId());
+            dto.setCompanyName(entity.getCompany().getName());
+        } else {
+            dto.setCompanyId(null);
+            dto.setCompanyName(null);
+        }
+
         dto.setActive(entity.getActive());
         dto.setQuestions(entity.getQuestions().stream()
                 .map(this::convertToQuestionDto)
@@ -346,10 +330,10 @@ public class FormAdminService {
     private QuestionDto convertQuestionToDtoWithPreferredTranslation(Question question, String preferredLanguage) {
         QuestionDto dto = new QuestionDto();
         //dto.setId(question.getId());
-        dto.setType(question.getType()); // AGORA: Define o Enum diretamente
+        dto.setType(question.getType());
         dto.setMandatory(question.getMandatory());
-        dto.setDeniable(question.getDeniable()); // ADICIONADO: Mapeia deniable
-        dto.setRequired(question.getRequired()); // ADICIONADO: Mapeia required
+        dto.setDeniable(question.getDeniable());
+        dto.setRequired(question.getRequired());
         dto.setOptions(question.getOptions());
 
         // Lógica para encontrar o label traduzido
@@ -366,7 +350,7 @@ public class FormAdminService {
                                 .findFirst()
                                 .orElse("No translation available (" + preferredLanguage + ")"))); // Fallback final
 
-        dto.setLabel(selectedLabel); // ADICIONADO: Define o label traduzido no DTO
+        dto.setLabel(selectedLabel);
 
         // Cria uma lista de QuestionTranslationDto com apenas a tradução selecionada.
         // QuestionDto espera uma List<QuestionTranslationDto>.
@@ -377,9 +361,6 @@ public class FormAdminService {
 
         return dto;
     }
-
-    //teste: novo getFormWithTranslateQuestions
-    // Em br.com.survey.hotelsurvey.service.FormAdminService
 
 
     /**

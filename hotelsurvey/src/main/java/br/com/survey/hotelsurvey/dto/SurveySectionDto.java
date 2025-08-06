@@ -22,6 +22,9 @@ public class SurveySectionDto {
     @NotNull(message = "Company ID cannot be null")
     private Long companyId;
 
+
+    private String companyName;
+
     private Boolean active = true;
 
     @Valid

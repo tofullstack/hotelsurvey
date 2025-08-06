@@ -15,19 +15,24 @@ import java.util.stream.Collectors;
 public class SurveySectionMapper {
 
     public static SurveySectionDto toDto(SurveySection section) {
-        List<QuestionDto> questions = section.getQuestions().stream()
-                .map(SurveySectionMapper::toQuestionDto)
-                .collect(Collectors.toList());
-
-
-        return new SurveySectionDto(
-                section.getId(),             // 1º
-                section.getName(),           // 2º
-                section.getCompany().getId(),// 3º
-                section.getActive(),         // 4º
-                questions                    // 5º
+        SurveySectionDto dto = new SurveySectionDto();
+        dto.setId(section.getId());
+        dto.setName(section.getName());
+        dto.setActive(section.getActive());
+        dto.setQuestions(
+                section.getQuestions().stream()
+                        .map(SurveySectionMapper::toQuestionDto)
+                        .collect(Collectors.toList())
         );
+
+        if (section.getCompany() != null) {
+            dto.setCompanyId(section.getCompany().getId());
+            dto.setCompanyName(section.getCompany().getName()); // <- aqui adiciona o nome
+        }
+
+        return dto;
     }
+
 
     private static QuestionDto toQuestionDto(Question q) {
         return new QuestionDto(
