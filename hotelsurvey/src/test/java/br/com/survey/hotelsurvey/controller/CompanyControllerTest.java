@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,20 +23,17 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-
-
-import static org.mockito.ArgumentMatchers.any;
-
-import static org.mockito.Mockito.when;
-
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*; // import para tratamento da url
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
 @WebMvcTest(controllers = CompanyController.class,
-excludeAutoConfiguration = {SecurityAutoConfiguration.class})
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class})
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("CompanyController Tests")
 public class CompanyControllerTest {
@@ -55,57 +54,70 @@ public class CompanyControllerTest {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
 
-
     /* Cenário de Sucesso @@
-    * Criando uma empresa com sucesso retorna 200 @*/
+     * Criando uma empresa com sucesso retorna 200 @*/
     @Test
     @DisplayName("Deve criar uma empresa com sucesso STATUS: 201")
     void shouldCreateCompanySuccessfully() throws Exception {
         CompanyDto requestDto = new CompanyDto();
-        requestDto.setName("Empresa 1"); // NÃO envia o ID!
+        requestDto.setName("Empresa 1");
+        requestDto.setSerieEmpresa("S001");
 
         CompanyDto responseDto = new CompanyDto();
-        responseDto.setId(1L); // Esse ID é retornado pelo service após salvar no banco
+        responseDto.setId(1L);
         responseDto.setName("Empresa 1");
+        responseDto.setSerieEmpresa("S001");
+
 
         when(companyService.createCompany(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/api/companies")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
-                //.andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.name").value("Empresa 1"));
+                .andExpect(jsonPath("$.name").value("Empresa 1"))
+                .andExpect(jsonPath("$.serieEmpresa").value("S001"));
     }
 
 
     /* Cenário Sucesso @@
      * Retorna todas as empresas STATUS: 200 */
     @Test
-    @DisplayName("Deve retornar uma lista com todas as empresas STATUS: 200")
+    @DisplayName("Deve retornar uma lista paginada com todas as empresas STATUS: 200")
     void shouldFindAllCompaniesSuccessfully() throws Exception {
         CompanyDto dto = new CompanyDto();
         dto.setName("Empresa 1");
         dto.setId(1L);
+        dto.setSerieEmpresa("S001");
 
-        when(companyService.getAllCompanies()).thenReturn(Arrays.asList(dto));
+        // Cria uma Page para o mock, com uma lista de DTOs e metadados de paginação
+        Page<CompanyDto> page = new PageImpl<>(Arrays.asList(dto));
 
-        mockMvc.perform(get("/api/companies"))
+        // Mocka o novo método, que recebe String e Pageable
+        when(companyService.getAllCompanies(any(), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/companies")
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Empresa 1"));
+                .andExpect(jsonPath("$.content[0].name").value("Empresa 1"))
+                .andExpect(jsonPath("$.content[0].id").value(1L))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     /* Cenário de Falha @@
-    * Retorna 409 para criação de empresas com nome duplicado
-    * */
-     @Test
-     @DisplayName("Deve retornar DuplicateEntryException ao criar uma empresa com nome duplicado STATUS: 409")
-     void shouldReturn409WhenDuplicateExceptinThrown() throws Exception {
+     * Retorna 409 para criação de empresas com nome duplicado
+     * */
+    @Test
+    @DisplayName("Deve retornar DuplicateEntryException ao criar uma empresa com nome duplicado STATUS: 409")
+    void shouldReturn409WhenDuplicateExceptinThrown() throws Exception {
         CompanyDto dto = new CompanyDto();
         dto.setName("Duplicado");
+        dto.setSerieEmpresa("S001");
         dto.setId(1L);
         CompanyDto dto2 = new CompanyDto();
+        dto2.setSerieEmpresa("S001");
         dto2.setId(2L);
         dto2.setName("Duplicado");
 
@@ -113,22 +125,22 @@ public class CompanyControllerTest {
                 .thenThrow(new DuplicateEntryException("Company already exists"));
 
         mockMvc.perform(post("/api/companies")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message", containsString("Company already exists")));
-     }
+    }
 
 
     /* Cenário Falha @@
-    * Deve retornar uma empresa pelo ID STATUS: 404
-    * */
+     * Deve retornar uma empresa pelo ID STATUS: 404
+     * */
 
     @Test
     @DisplayName("Deve retornar ResourceNotFound quando nao encontra uma empresa pelo ID STATUS: 404")
     void shouldReturn404WhenCompanyNotFound() throws Exception {
         when(companyService.getCompanyById(999L))
-        .thenThrow(new ResourceNotFoundException("Company not found"));
+                .thenThrow(new ResourceNotFoundException("Company not found"));
 
         mockMvc.perform(get("/api/companies/{id}", 999L))
                 .andExpect(status().isNotFound())
@@ -136,21 +148,28 @@ public class CompanyControllerTest {
     }
 
     /* Cenário Falha @@
-    * Retorna uma lista vazia quando nenhuma empresa existe STATUS: 200
-    */
+     * Retorna uma lista vazia quando nenhuma empresa existe STATUS: 200
+     */
     @Test
-    @DisplayName("Deve retornar uma lista vazia quando nenhuma empresa existe STATUS: 200")
+    @DisplayName("Deve retornar uma página vazia quando nenhuma empresa existe STATUS: 200")
     void shouldReturnEmptyListWhenCompanyNotFound() throws Exception {
-        when(companyService.getAllCompanies()).thenReturn(Collections.emptyList());
+        // Cria uma Page vazia
+        Page<CompanyDto> emptyPage = Page.empty();
 
-        mockMvc.perform(get("/api/companies"))
+        // Mocka o novo método, que recebe String e Pageable
+        when(companyService.getAllCompanies(any(), any())).thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/companies")
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     /* Cenário de Falha
-    * Retorna 404 ao criar uma empresa com dados nulos
-    *  */
+     * Retorna 404 ao criar uma empresa com dados nulos
+     * */
 
     @Test
     @DisplayName("Deve retornar BadRequest ao criar uma empresa com campos nulos STATUS: 404")
@@ -159,19 +178,20 @@ public class CompanyControllerTest {
         CompanyDto dto = new CompanyDto();
 
         mockMvc.perform(post("/api/companies")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation Failed"));
     }
 
     /* Cenário de Falha
-    * Retorna 500
+     * Retorna 500
      */
     @Test
     @DisplayName("Deve retornar InternalServerError STATUS: 500")
     void shoulReturnInternalServerErrorOnCreateCompany() throws Exception {
-        when(companyService.getAllCompanies()).thenThrow(new RuntimeException("Oops"));
+        // Mocka o novo método com a exceção
+        when(companyService.getAllCompanies(any(), any())).thenThrow(new RuntimeException("Oops"));
 
         mockMvc.perform(get("/api/companies"))
                 .andExpect(status().isInternalServerError())

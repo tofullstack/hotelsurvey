@@ -12,12 +12,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,14 +42,13 @@ public class CompanyServiceTest {
 
     @BeforeEach
     void setUp() {
-        testCompany = new Company(1L, "Empresa Teste");
-        testCompanyDto = new CompanyDto(1L, "Empresa Teste");
+        testCompany = new Company(1L, "Empresa Teste", "S123");
+        testCompanyDto = new CompanyDto(1L, "Empresa Teste", "S123");
     }
 
     /* Cenário Sucesso @@
-	  Criar uma empresa
+      Criar uma empresa
     */
-
     @Test
     @DisplayName("Deve criar uma nova empresa com sucesso")
     void shouldCreateCompanySuccessfully() {
@@ -64,7 +70,6 @@ public class CompanyServiceTest {
     @Test
     @DisplayName("Deve lancar DuplicateEntryException ao criar uma empresa com nome duplicado")
     void shouldThrowDuplicateEntryExceptionWhenCreatingCompanyWithDuplicateName() {
-        // uma empresa com o mesmo nome já existe.
         when(companyRepository.findByName(anyString())).thenReturn(Optional.of(testCompany));
 
         DuplicateEntryException exception = assertThrows(DuplicateEntryException.class, () ->
@@ -77,21 +82,51 @@ public class CompanyServiceTest {
     }
 
     /* Cenário de Sucesso @@
-     * Resgatando uma lista de empresas
+     * Resgatando uma lista de empresas paginada
      */
     @Test
-    @DisplayName("Deve retornar uma lista de todas as empresas")
-    void shouldReturnAllCompanies() {
-        List<Company> companies = Arrays.asList(testCompany, new Company(2L, "Outra Empresa Teste"));
-        when(companyRepository.findAll()).thenReturn(companies);
+    @DisplayName("Deve retornar uma página de empresas quando o filtro é nulo")
+    void shouldReturnAllCompaniesWithPaginationWhenNameIsNull() {
+        // Mocka a lista de empresas retornada pelo repositório
+        List<Company> companies = Arrays.asList(testCompany, new Company(2L, "Outra Empresa Teste", "S321"));
+        Page<Company> companyPage = new PageImpl<>(companies);
 
-        List<CompanyDto> result = companyService.getAllCompanies();
+        // Mocka a chamada ao repositório para o método paginado
+        when(companyRepository.findAll(any(Pageable.class))).thenReturn(companyPage);
+
+        // Chama o service com nome nulo para simular a busca de todas as empresas
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<CompanyDto> result = companyService.getAllCompanies(null, pageable);
 
         assertNotNull(result);
-        assertEquals(2, result.size());
-        assertEquals("Empresa Teste", result.get(0).getName());
-        assertEquals("Outra Empresa Teste", result.get(1).getName());
-        verify(companyRepository, times(1)).findAll();
+        assertEquals(2, result.getTotalElements());
+        assertEquals("Empresa Teste", result.getContent().get(0).getName());
+        verify(companyRepository, times(1)).findAll(pageable);
+        verify(companyRepository, never()).findByNameContainingIgnoreCase(any(), any());
+    }
+
+    /* Cenário de Sucesso @@
+     * Buscando empresas por nome com paginação
+     */
+    @Test
+    @DisplayName("Deve retornar uma página de empresas quando um nome é fornecido")
+    void shouldReturnFilteredCompaniesWithPaginationWhenNameIsProvided() {
+        // Mocka a lista de empresas que correspondem ao filtro
+        List<Company> filteredCompanies = Collections.singletonList(testCompany);
+        Page<Company> filteredPage = new PageImpl<>(filteredCompanies);
+
+        // Mocka a chamada ao repositório para o método de busca paginado
+        when(companyRepository.findByNameContainingIgnoreCase(anyString(), any(Pageable.class))).thenReturn(filteredPage);
+
+        // Chama o service com um nome para simular a busca
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<CompanyDto> result = companyService.getAllCompanies("Empresa Teste", pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Empresa Teste", result.getContent().get(0).getName());
+        verify(companyRepository, times(1)).findByNameContainingIgnoreCase("Empresa Teste", pageable);
+        verify(companyRepository, never()).findAll(any(Pageable.class));
     }
 
     /* Cenário de Sucesso @@
@@ -101,9 +136,7 @@ public class CompanyServiceTest {
     @Test
     @DisplayName("Deve retornar a empresa correta quando o ID for encontrado")
     void shouldReturnCompanyByIdSuccessfully() {
-
         when(companyRepository.findById(anyLong())).thenReturn(Optional.of(testCompany));
-
         CompanyDto result = companyService.getCompanyById(1L);
 
         assertNotNull(result);
@@ -114,11 +147,9 @@ public class CompanyServiceTest {
     /* Cenário de Falha @@
      * Buscar uma empresa não existente @
      */
-
     @Test
     @DisplayName("Deve lancar ResourceNotFoundException quando o ID da empresa nao for encontrado")
     void shouldThrowResourceNotFoundExceptionWhenCompanyNotFoundById() {
-        // nenhuma empresa é encontrada com o ID fornecido.
         when(companyRepository.findById(anyLong())).thenReturn(Optional.empty());
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () ->
@@ -132,15 +163,13 @@ public class CompanyServiceTest {
     /* Cenário de Sucesso @@
      * Atualizando uma empresa com sucesso @
      */
-
     @Test
     @DisplayName("Deve atualizar uma empresa com sucesso quando o nome nao for duplicado")
     void shouldUpdateCompanySuccessfully() {
-        // a empresa a ser atualizada existe e o novo nome não é duplicado.
-        CompanyDto updatedDto = new CompanyDto(1L, "Updated Company Name");
+        CompanyDto updatedDto = new CompanyDto(1L, "Updated Company Name", "S123");
         when(companyRepository.findById(1L)).thenReturn(Optional.of(testCompany));
         when(companyRepository.findByName("Updated Company Name")).thenReturn(Optional.empty());
-        when(companyRepository.save(any(Company.class))).thenReturn(new Company(1L, "Updated Company Name"));
+        when(companyRepository.save(any(Company.class))).thenReturn(new Company(1L, "Updated Company Name", "S123"));
 
         CompanyDto result = companyService.updateCompany(1L, updatedDto);
 
@@ -158,8 +187,7 @@ public class CompanyServiceTest {
     @Test
     @DisplayName("Deve lancar ResourceNotFoundException ao tentar atualizar uma empresa inexistente")
     void shouldThrowResourceNotFoundExceptionWhenUpdatingNonexistentCompany() {
-        // a empresa a ser atualizada não existe.
-        CompanyDto updatedDto = new CompanyDto(99L, "Nonexistent Company");
+        CompanyDto updatedDto = new CompanyDto(99L, "Nonexistent Company", "S999");
         when(companyRepository.findById(anyLong())).thenReturn(Optional.empty());
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () ->
@@ -178,16 +206,14 @@ public class CompanyServiceTest {
     @Test
     @DisplayName("Deve lancar DuplicateEntryException ao atualizar uma empresa com nome que ja existe para outra")
     void shouldThrowDuplicateEntryExceptionWhenUpdatingWithDuplicateName() {
-        Company existingCompany2 = new Company(2L, "Existing Company 2");
-        CompanyDto updatedDto = new CompanyDto(1L, "Existing Company 2");
+        Company existingCompany2 = new Company(2L, "Existing Company 2", "S321");
+        CompanyDto updatedDto = new CompanyDto(1L, "Existing Company 2", "S321");
         when(companyRepository.findById(1L)).thenReturn(Optional.of(testCompany));
         when(companyRepository.findByName("Existing Company 2")).thenReturn(Optional.of(existingCompany2));
-
 
         DuplicateEntryException exception = assertThrows(DuplicateEntryException.class, () ->
                 companyService.updateCompany(1L, updatedDto)
         );
-
 
         assertEquals("Company with name 'Existing Company 2' already exists.", exception.getMessage());
         verify(companyRepository, times(1)).findById(1L);
@@ -201,14 +227,12 @@ public class CompanyServiceTest {
     @Test
     @DisplayName("Deve atualizar uma empresa com sucesso mesmo se o nome for o mesmo")
     void shouldUpdateCompanySuccessfullyWithSameName() {
-        // a empresa a ser atualizada existe e o nome não é alterado.
-        CompanyDto sameNameDto = new CompanyDto(1L, "Empresa Teste");
+        CompanyDto sameNameDto = new CompanyDto(1L, "Empresa Teste", "S123");
         when(companyRepository.findById(1L)).thenReturn(Optional.of(testCompany));
         when(companyRepository.save(any(Company.class))).thenReturn(testCompany);
 
         CompanyDto result = companyService.updateCompany(1L, sameNameDto);
 
-        // o nome do DTO retornado deve ser o mesmo
         assertNotNull(result);
         assertEquals("Empresa Teste", result.getName());
         verify(companyRepository, times(1)).findById(1L);
@@ -219,7 +243,6 @@ public class CompanyServiceTest {
     /* Cenário de Sucesso @@
      * Deletar empresa com sucesso @
      */
-
     @Test
     @DisplayName("Deve chamar o metodo deleteById do repositorio para excluir a empresa")
     void shouldDeleteCompanyById() {

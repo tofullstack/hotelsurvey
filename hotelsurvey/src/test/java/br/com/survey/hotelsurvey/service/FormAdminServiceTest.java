@@ -62,7 +62,7 @@ public class FormAdminServiceTest {
     @BeforeEach
     void setUp() {
         // inicializa dados de teste antes de cada método
-        testCompany = new Company(1L, "Test Company");
+        testCompany = new Company(1L, "Test Company", "S001");
 
         existingSurveySection = new SurveySection(1L, "Existing Form", false, true, testCompany, new ArrayList<>());
 

@@ -12,4 +12,7 @@ public class CompanyDto {
     private Long id;
     @NotBlank(message = "Company name cannot be blank")
     private String name;
+
+    @NotBlank(message = "Serie cannot be blank")
+    private String serieEmpresa;
 }

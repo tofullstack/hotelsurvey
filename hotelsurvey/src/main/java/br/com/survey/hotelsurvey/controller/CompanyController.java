@@ -4,6 +4,8 @@ import br.com.survey.hotelsurvey.dto.CompanyDto;
 import br.com.survey.hotelsurvey.service.CompanyService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,10 +27,15 @@ public class CompanyController {
         return new ResponseEntity<>(createdCompany, HttpStatus.CREATED);
     }
 
+
     @GetMapping
-    public ResponseEntity<List<CompanyDto>> getAllCompanies() {
-        List<CompanyDto> companies = companyService.getAllCompanies();
-        return ResponseEntity.ok(companies);
+    public ResponseEntity<Page<CompanyDto>> getAllCompanies(
+            @RequestParam(required = false) String name,
+            Pageable pageable) {
+
+        // Chama o service com os parâmetros de busca e paginação
+        Page<CompanyDto> companiesPage = companyService.getAllCompanies(name, pageable);
+        return ResponseEntity.ok(companiesPage);
     }
 
     @GetMapping("/{id}")

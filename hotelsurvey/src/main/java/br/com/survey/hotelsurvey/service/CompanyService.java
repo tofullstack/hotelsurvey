@@ -7,10 +7,10 @@ import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.repository.CompanyRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
+import org.springframework.data.domain.Pageable;
+import org.springframework.util.StringUtils;
 
 @Service
 public class CompanyService {
@@ -25,15 +25,26 @@ public class CompanyService {
         }
         Company company = new Company();
         company.setName(companyDto.getName());
+        company.setSerieEmpresa(companyDto.getSerieEmpresa());
         Company savedCompany = companyRepository.save(company);
         return convertToDto(savedCompany);
     }
 
-    public List<CompanyDto> getAllCompanies() {
-        return companyRepository.findAll().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+    // Este é o método correto e único para buscar empresas
+    public Page<CompanyDto> getAllCompanies(String name, Pageable pageable) {
+        Page<Company> companiesPage;
+
+        // Lógica para decidir se a busca é com filtro ou sem
+        if (StringUtils.hasText(name)) {
+            companiesPage = companyRepository.findByNameContainingIgnoreCase(name, pageable);
+        } else {
+            companiesPage = companyRepository.findAll(pageable);
+        }
+
+        // Converte a Page de Company para uma Page de CompanyDto
+        return companiesPage.map(this::convertToDto);
     }
+
 
     public CompanyDto getCompanyById(Long id) {
         Company company = companyRepository.findById(id)
@@ -51,6 +62,7 @@ public class CompanyService {
         }
 
         existingCompany.setName(companyDto.getName());
+        existingCompany.setSerieEmpresa(companyDto.getSerieEmpresa()); // Adicionado
         Company updatedCompany = companyRepository.save(existingCompany);
         return convertToDto(updatedCompany);
     }
@@ -58,7 +70,6 @@ public class CompanyService {
     // soft delete
     @Transactional
     public void deleteCompany(Long id) {
-
         companyRepository.deleteById(id);
     }
 
@@ -66,6 +77,7 @@ public class CompanyService {
         CompanyDto dto = new CompanyDto();
         dto.setId(company.getId());
         dto.setName(company.getName());
+        dto.setSerieEmpresa(company.getSerieEmpresa());
         return dto;
     }
 }

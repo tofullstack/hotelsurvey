@@ -28,6 +28,7 @@ public class DataInitializer {
                         .orElseGet(() -> {
                             Company newCompany = new Company();
                             newCompany.setName("Empresa Padrão");
+                            newCompany.setSerieEmpresa("S001");
                             return companyRepository.save(newCompany);
                         });
 
