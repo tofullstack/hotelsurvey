@@ -304,7 +304,7 @@ public class FormAdminService {
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
         entity.setDeniable(dto.getDeniable());
-        entity.setRequired(dto.getRequired());
+//        entity.setRequired(dto.getRequired());
         entity.setOptions(dto.getOptions());
         entity.setTranslations(
                 dto.getTranslations().stream().map(t -> {
@@ -321,11 +321,12 @@ public class FormAdminService {
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
+        dto.setSurveySectionId(entity.getSurveySection().getId());
         dto.setType(entity.getType());
         dto.setLabel(entity.getLabel());
         dto.setMandatory(entity.getMandatory());
         dto.setDeniable(entity.getDeniable());
-        dto.setRequired(entity.getRequired());
+//        dto.setRequired(entity.getRequired());
         dto.setOptions(entity.getOptions());
         dto.setTranslations(
                 entity.getTranslations().stream().map(t -> {
@@ -371,17 +372,20 @@ public class FormAdminService {
         dto.setId(surveySection.getId());
         dto.setName(surveySection.getName());
         dto.setCompanyId(surveySection.getCompany() != null ? surveySection.getCompany().getId() : null);
+        dto.setCompanyName(surveySection.getCompany() != null ? surveySection.getCompany().getName() : null);
         dto.setActive(surveySection.getActive());
         dto.setSerieEmpresa(surveySection.getSerieEmpresa());
+        dto.setConditional(surveySection.getConditional());
 
         List<QuestionDto> translatedQuestions = surveySection.getQuestions().stream()
                 .map(questionEntity -> {
                     QuestionDto qDto = new QuestionDto();
                     qDto.setId(questionEntity.getId());
+                    qDto.setSurveySectionId(questionEntity.getSurveySection().getId());
                     qDto.setType(questionEntity.getType());
-                    qDto.setMandatory(questionEntity.getMandatory());
                     qDto.setDeniable(questionEntity.getDeniable());
-                    qDto.setRequired(questionEntity.getRequired());
+                    qDto.setMandatory(questionEntity.getMandatory());
+//                    qDto.setRequired(questionEntity.getRequired());
                     qDto.setOptions(questionEntity.getOptions());
 
                     String finalQuestionLabel = questionEntity.getTranslations().stream()

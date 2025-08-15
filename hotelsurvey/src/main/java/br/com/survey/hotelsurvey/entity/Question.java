@@ -23,10 +23,10 @@ public class Question {
     private String label;
 
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "survey_section_id", nullable = false)
-@EqualsAndHashCode.Exclude // excluindo 'surveySection' do equals/hashCode
-@ToString.Exclude     // excluindo 'surveySection' do toString
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "survey_section_id", nullable = false)
+    @EqualsAndHashCode.Exclude // excluindo 'surveySection' do equals/hashCode
+    @ToString.Exclude     // excluindo 'surveySection' do toString
     private SurveySection surveySection;
 
     @Column(nullable = false)
@@ -39,7 +39,7 @@ public class Question {
     @Column(nullable = false)
     private Boolean mandatory = false;
 
-    private Boolean required;
+//    private Boolean required;
 
     @Convert(converter = ListToJsonConverter.class)
     private List<String> options;
@@ -48,24 +48,21 @@ public class Question {
     //teste: campo helper para formularios condicionais
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
-    private List<ConditionalSectionTrigger> triggers = new ArrayList<>();;
+    private List<ConditionalSectionTrigger> triggers = new ArrayList<>();
 
 
 
     // traduções da pergunta
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-  //  @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @EqualsAndHashCode.Exclude // excluindo'translations' do equals/hashCode
     @ToString.Exclude     // excluindo 'translations' do toString
     private Set<QuestionTranslation> translations;
 
     public Question() {
-        // Construtor vazio que garante que as listas existam
-        // Isso é redundante se inicializado na declaração, mas serve como um fallback de segurança
+
         this.triggers = new ArrayList<>();
         this.translations = new HashSet<>();
     }
-
 
 
 }

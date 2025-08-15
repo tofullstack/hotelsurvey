@@ -51,7 +51,7 @@ public class PublicApiService {
         dto.setId(question.getId());
         dto.setType(question.getType().name());
         dto.setMandatory(question.getMandatory());
-        dto.setRequired(question.getRequired());
+//        dto.setRequired(question.getRequired());
         dto.setOptions(question.getOptions());
 
         String label = question.getTranslations().stream()

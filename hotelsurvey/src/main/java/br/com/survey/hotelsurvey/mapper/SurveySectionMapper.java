@@ -48,7 +48,7 @@ public class SurveySectionMapper {
                 q.getLabel(),
                 q.getDeniable() != null ? q.getDeniable() : false,
                 q.getMandatory() != null ? q.getMandatory() : false,
-                q.getRequired() != null ? q.getRequired() : false,
+//                q.getRequired() != null ? q.getRequired() : false,
                 q.getOptions()
         );
     }
@@ -65,7 +65,7 @@ public class SurveySectionMapper {
                 questionDto.setId(question.getId());
                 questionDto.setType(question.getType());
                 questionDto.setMandatory(question.getMandatory());
-                questionDto.setRequired(question.getRequired());
+//                questionDto.setRequired(question.getRequired());
                 questionDto.setDeniable(question.getDeniable());
                 questionDto.setOptions(question.getOptions());
 

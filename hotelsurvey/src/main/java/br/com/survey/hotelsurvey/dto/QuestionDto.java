@@ -23,7 +23,7 @@ public class QuestionDto {
     private String label;
     private Boolean deniable;
     private Boolean mandatory;
-    private Boolean required;
+//    private Boolean required;
     private List<String> options;
 
     @NotEmpty(message = "At least one translation is required")
@@ -32,14 +32,14 @@ public class QuestionDto {
 
 
 
-    public QuestionDto(Long id, Long surveySectionId, QuestionType type, String label, Boolean deniable, Boolean mandatory, Boolean required, List<String> options) {
+    public QuestionDto(Long id, Long surveySectionId, QuestionType type, String label, Boolean deniable, Boolean mandatory, List<String> options) {
         this.id = id;
         this.surveySectionId = surveySectionId;
         this.type = type;
         this.label = label;
         this.deniable = deniable;
         this.mandatory = mandatory;
-        this.required = required;
+//        this.required = required;
         this.options = options;
     }
 }
