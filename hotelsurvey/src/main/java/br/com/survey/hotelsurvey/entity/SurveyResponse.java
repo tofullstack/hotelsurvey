@@ -23,9 +23,8 @@ public class SurveyResponse {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    // idioma em que a pesquisa foi respondida
-//    @Column(nullable = false)
-//    private String language;
+    @Column
+    private String serieEmpresa;
 
     // data e hora em que a resposta foi registrada
     @Column(nullable = false)

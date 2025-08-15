@@ -1,6 +1,8 @@
 package br.com.survey.hotelsurvey.service;
 
+import br.com.survey.hotelsurvey.dto.QuestionAnswerDetailDto;
 import br.com.survey.hotelsurvey.dto.QuestionAnswerRequest;
+import br.com.survey.hotelsurvey.dto.SurveyResponseDetailDto;
 import br.com.survey.hotelsurvey.dto.SurveyResponseRequest;
 import br.com.survey.hotelsurvey.entity.*;
 import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
@@ -43,27 +45,29 @@ public class SurveyResponseService {
      */
     @Transactional
     public Long submitSurveyResponse(SurveyResponseRequest request) {
-        // 1. Validar e buscar a Company
+
+        // 1. Validate and fetch the Company
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + request.getCompanyId()));
 
-        // 2. Vai criar a entidade SurveyResponse
+        // 2. Create the SurveyResponse entity
         SurveyResponse surveyResponse = new SurveyResponse();
         surveyResponse.setCompany(company);
-        //surveyResponse.setLanguage(request.getLanguage());
         surveyResponse.setResponseDate(LocalDateTime.now());
         surveyResponse.setGuestIdentifier(request.getGuestIdentifier());
         surveyResponse.setFreeTextFeedback(request.getFreeTextFeedback());
+        surveyResponse.setSerieEmpresa(company.getSerieEmpresa());
 
         SurveyResponse savedSurveyResponse = surveyResponseRepository.save(surveyResponse);
 
         List<QuestionAnswer> answers = new ArrayList<>();
-        // Mapa para armazenar as seções de pesquisa ativas e perguntas ativas para validação eficiente
+        // Map to store active survey sections and questions for efficient validation
         Map<Long, SurveySection> activeSections = new HashMap<>();
         Map<Long, Question> activeQuestions = new HashMap<>();
 
-        // Pré-carregar todas as seções e perguntas ativas para a empresa e idioma
-       List<SurveySection> sectionsForCompany = surveySectionRepository.findByCompanyIdAndActiveTrue(company.getId());
+        // Corrected: Pre-load all active sections and their questions for the company.
+        // Ensure that you have a method in your repository that fetches questions eagerly.
+        List<SurveySection> sectionsForCompany = surveySectionRepository.findByCompanyIdAndActiveTrueWithQuestions(company.getId());
         for (SurveySection section : sectionsForCompany) {
             activeSections.put(section.getId(), section);
             for (Question question : section.getQuestions()) {
@@ -71,7 +75,7 @@ public class SurveyResponseService {
             }
         }
 
-        // processar e validar cada resposta individual
+        // Process and validate each individual answer
         for (QuestionAnswerRequest answerRequest : request.getAnswers()) {
             SurveySection surveySection = activeSections.get(answerRequest.getSurveySectionId());
             if (surveySection == null) {
@@ -83,32 +87,27 @@ public class SurveyResponseService {
                 throw new ValidationException("Question with ID " + answerRequest.getQuestionId() + " is not active, does not exist, or does not belong to section " + answerRequest.getSurveySectionId());
             }
 
-
-            // validação 1: Não permitir 'didNotUseService' se a pergunta não for NEGAVEL
-            if (!question.getDeniable() && answerRequest.getDidNotUseService()) {
+            // Validation 1: Do not allow 'didNotUseService' if the question is not deniable
+            if (!Boolean.TRUE.equals(question.getDeniable()) && Boolean.TRUE.equals(answerRequest.getDidNotUseService())) {
                 throw new ValidationException("Question '" + question.getLabel() + "' cannot be marked as 'did not use service'. It requires a direct response.");
             }
 
-            // validação 2: Se a pergunta é obrigatória E o serviço FOI USADO, o valor da resposta NÃO PODE estar em branco.
-            if (question.getMandatory() && !answerRequest.getDidNotUseService() && !StringUtils.hasText(answerRequest.getAnswerValue())) {
+            // Validation 2: If the question is mandatory AND the service WAS USED, the answer value CANNOT be blank.
+            if (Boolean.TRUE.equals(question.getMandatory()) && !Boolean.TRUE.equals(answerRequest.getDidNotUseService()) && !StringUtils.hasText(answerRequest.getAnswerValue())) {
                 throw new ValidationException("Mandatory question '" + question.getLabel() + "' requires an answer.");
             }
 
-            // validação 3: Se o serviço NÃO FOI USADO, o valor da resposta DEVE estar em branco.
-            //isso evita que o usuário preencha algo e marque "não usei".
-            if (answerRequest.getDidNotUseService() && StringUtils.hasText(answerRequest.getAnswerValue())) {
+            // Validation 3: If the service WAS NOT USED, the answer value MUST be blank.
+            if (Boolean.TRUE.equals(answerRequest.getDidNotUseService()) && StringUtils.hasText(answerRequest.getAnswerValue())) {
                 throw new ValidationException("You cannot provide an answer to a question marked as 'did not use service'. Answer value must be blank.");
             }
 
-
-
-
-            // Validações específicas por tipo de pergunta, só se o serviço FOI UTILIZADO
-            if (!answerRequest.getDidNotUseService()) {
+            // Specific validations by question type, only if the service WAS USED
+            if (!Boolean.TRUE.equals(answerRequest.getDidNotUseService())) {
                 if (question.getType() == QuestionType.SCALE) {
                     try {
                         int rating = Integer.parseInt(answerRequest.getAnswerValue());
-                        if (rating < 1 || rating > 5) { // Exemplo de range. Ajuste conforme suas opções.
+                        if (rating < 1 || rating > 5) {
                             throw new ValidationException("Scale question '" + question.getLabel() + "' must have a value between 1 and 5.");
                         }
                     } catch (NumberFormatException e) {
@@ -125,13 +124,10 @@ public class SurveyResponseService {
                             throw new ValidationException("Choice question '" + question.getLabel() + "' has an invalid answer value. Valid options are: " + String.join(", ", validOptions));
                         }
                     } else {
-                        // Se for CHOICE, mas não tem opções definidas, talvez seja um erro na definição do formulário
                         throw new ValidationException("Choice question '" + question.getLabel() + "' has no valid options defined.");
                     }
                 }
-                // Para TEXT, a validação de `NotBlank` já foi feita acima se for mandatório.
             }
-
 
             QuestionAnswer answer = new QuestionAnswer();
             answer.setSurveyResponse(savedSurveyResponse);
@@ -144,5 +140,38 @@ public class SurveyResponseService {
 
         questionAnswerRepository.saveAll(answers);
         return savedSurveyResponse.getId();
+    }
+
+    // novo método para buscar detalhes
+    public SurveyResponseDetailDto getSurveyResponseById(Long id) {
+        SurveyResponse entity = surveyResponseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SurveyResponse not found with ID: " + id));
+
+        SurveyResponseDetailDto dto = new SurveyResponseDetailDto();
+        dto.setId(entity.getId());
+        dto.setCompanyId(entity.getCompany().getId());
+        dto.setCompanyName(entity.getCompany().getName());
+        dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa()); // populando o novo campo
+        dto.setResponseDate(entity.getResponseDate());
+        dto.setGuestIdentifier(entity.getGuestIdentifier());
+        dto.setFreeTextFeedback(entity.getFreeTextFeedback());
+
+        //  mapper para answers
+        List<QuestionAnswerDetailDto> answersDto = entity.getAnswers().stream().map(answer -> {
+            QuestionAnswerDetailDto dtoDetail = new QuestionAnswerDetailDto();
+            dtoDetail.setAnswerId(answer.getId());
+            dtoDetail.setQuestionId(answer.getQuestion().getId());
+            dtoDetail.setQuestionLabel(answer.getQuestion().getLabel());
+            dtoDetail.setQuestionType(answer.getQuestion().getType());
+            dtoDetail.setSurveySectionId(answer.getSurveySection().getId());
+            dtoDetail.setSurveySectionName(answer.getSurveySection().getName());
+            dtoDetail.setAnswerValue(answer.getAnswerValue());
+            dtoDetail.setDidNotUseService(answer.getDidNotUseService());
+            return dtoDetail;
+        }).toList();
+
+        dto.setAnswers(answersDto);
+
+        return dto;
     }
 }

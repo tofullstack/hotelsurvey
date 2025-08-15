@@ -18,6 +18,7 @@ import java.util.List;
 //@AllArgsConstructor
 public class QuestionDto {
     private Long id;
+    private Long surveySectionId;
     private QuestionType type;
     private String label;
     private Boolean deniable;
@@ -28,17 +29,17 @@ public class QuestionDto {
     @NotEmpty(message = "At least one translation is required")
     private List<QuestionTranslationDto> translations;
 
-    private List<ConditionalSectionTrigger> triggers;
 
 
-    public QuestionDto(Long id, QuestionType type, String label, Boolean deniable, Boolean mandatory, Boolean required, List<String> options) {
+
+    public QuestionDto(Long id, Long surveySectionId, QuestionType type, String label, Boolean deniable, Boolean mandatory, Boolean required, List<String> options) {
         this.id = id;
+        this.surveySectionId = surveySectionId;
         this.type = type;
         this.label = label;
         this.deniable = deniable;
         this.mandatory = mandatory;
         this.required = required;
         this.options = options;
-        // Translations e triggers permanecerão nulos, o que parece ser o comportamento desejado para este DTO.
     }
 }

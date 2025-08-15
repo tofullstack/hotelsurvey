@@ -37,23 +37,34 @@ public class ReportController {
     public ResponseEntity<List<SurveyResponseDetailDto>> getSurveyResponses(
             @RequestParam(required = false) Long companyId,
             @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String serieEmpresa, // novo parâmetro
             @RequestParam(required = false) String language,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        List<SurveyResponseDetailDto> responses = reportService.getFilteredSurveyResponses(companyId, companyName, language, startDate, endDate);
+        List<SurveyResponseDetailDto> responses = reportService.getFilteredSurveyResponses(
+                companyId,
+                companyName,
+                serieEmpresa,  // novo campo
+                language,
+                startDate,
+                endDate
+        );
         return ResponseEntity.ok(responses);
     }
+
     /**
      * retorna os detalhes de uma resposta de formulário específica.
-     * GET /api/reports/responses/{id}
+     * GET /api/reports/responses/{serie}
      *
-     * @param id ID da resposta do formulário.
+     * @param serieEmpresa ID da resposta do formulário.
      * @return SurveyResponseDetailDto.
      */
-    @GetMapping("/responses/{id}")
-    public ResponseEntity<SurveyResponseDetailDto> getSurveyResponseById(@PathVariable Long id) {
-        SurveyResponseDetailDto response = reportService.getSurveyResponseById(id);
+    @GetMapping("/responses/{serieEmpresa}")
+    public ResponseEntity<SurveyResponseDetailDto> getSurveyResponseBySerie(@PathVariable String serieEmpresa) {
+        SurveyResponseDetailDto response = reportService.getSurveyResponseBySerie(serieEmpresa);
         return ResponseEntity.ok(response);
     }
+
+
 }

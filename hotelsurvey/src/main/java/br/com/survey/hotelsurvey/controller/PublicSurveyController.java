@@ -1,6 +1,7 @@
 package br.com.survey.hotelsurvey.controller;
 
 import br.com.survey.hotelsurvey.dto.PublicSurveySectionDto;
+import br.com.survey.hotelsurvey.dto.SurveyResponseDetailDto;
 import br.com.survey.hotelsurvey.dto.SurveyResponseRequest;
 import br.com.survey.hotelsurvey.service.PublicApiService;
 import br.com.survey.hotelsurvey.service.SurveyResponseService;
@@ -10,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/survey")
@@ -48,4 +48,18 @@ public class PublicSurveyController {
             return new ResponseEntity<>("Error submitting survey response: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
+
+
+
+    @GetMapping("/{id}")
+    public ResponseEntity<SurveyResponseDetailDto> getById(@PathVariable Long id) {
+        SurveyResponseDetailDto dto = surveyResponseService.getSurveyResponseById(id);
+        return ResponseEntity.ok(dto);
+    }
+
+
+
+
+
+
 }

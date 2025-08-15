@@ -29,6 +29,8 @@ public class SurveyResponseRequest {
     @Size(min = 1, message = "At least one answer is required")
     private List<QuestionAnswerRequest> answers;
 
+    private String serieEmpresa;
+
     // campo para feedback livre, pode ser opcional
     private String freeTextFeedback;
 }

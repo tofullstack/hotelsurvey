@@ -4,14 +4,16 @@ import br.com.survey.hotelsurvey.config.ListToJsonConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 @Data
 @Entity
 @Table(name = "questions")
-@NoArgsConstructor
-@AllArgsConstructor
+//@NoArgsConstructor
+//@AllArgsConstructor
 public class Question {
 
     @Id
@@ -46,7 +48,7 @@ public class Question {
     //teste: campo helper para formularios condicionais
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
-    private List<ConditionalSectionTrigger> triggers;
+    private List<ConditionalSectionTrigger> triggers = new ArrayList<>();;
 
 
 
@@ -57,11 +59,13 @@ public class Question {
     @ToString.Exclude     // excluindo 'translations' do toString
     private Set<QuestionTranslation> translations;
 
-    // helper opcional
-    public QuestionTranslation getTranslationByLanguage(String language) {
-        return translations.stream()
-                .filter(t -> t.getLanguage().equalsIgnoreCase(language))
-                .findFirst()
-                .orElse(null);
+    public Question() {
+        // Construtor vazio que garante que as listas existam
+        // Isso é redundante se inicializado na declaração, mas serve como um fallback de segurança
+        this.triggers = new ArrayList<>();
+        this.translations = new HashSet<>();
     }
+
+
+
 }

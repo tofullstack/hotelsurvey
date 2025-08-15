@@ -25,6 +25,9 @@ public class SurveySection {
     private String name;
 
     @Column(nullable = false)
+    private String serieEmpresa;
+
+    @Column(nullable = false)
     private Boolean conditional = false;
 
     @Column(nullable = false)
@@ -32,12 +35,11 @@ public class SurveySection {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
-    // Opcional, mas boa prática: exclua 'company' também se não for essencial no toString para evitar ciclos com a Company
-    // @ToString.Exclude
+
     private Company company;
 
     @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @OrderBy("id ASC")
-    @ToString.Exclude // <--- Adicione esta linha!
+    @ToString.Exclude
     private List<Question> questions;
 }

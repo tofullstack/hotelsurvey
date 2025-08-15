@@ -12,10 +12,13 @@ import java.util.Optional;
 public interface SurveySectionRepository extends JpaRepository<SurveySection, Long> {
     List<SurveySection> findByCompanyIdAndActiveTrue(Long companyId);
 
+    @Query("SELECT DISTINCT s FROM SurveySection s LEFT JOIN FETCH s.questions q WHERE s.company.id = :companyId AND s.active = true")
+    List<SurveySection> findByCompanyIdAndActiveTrueWithQuestions(@Param("companyId") Long companyId);
 
     @Query("SELECT s FROM SurveySection s JOIN FETCH s.questions q JOIN FETCH q.translations t WHERE s.company.id = :companyId AND s.active = true")
     List<SurveySection> findByCompanyIdAndActiveTrueWithQuestionsAndTranslations(@Param("companyId") Long companyId);
 
+    List<SurveySection> findByConditionalIsTrueAndCompanyId(Long companyId);
 
 
     //teste: novo filtro para tratamento no formadminservice SEM linguagem definida

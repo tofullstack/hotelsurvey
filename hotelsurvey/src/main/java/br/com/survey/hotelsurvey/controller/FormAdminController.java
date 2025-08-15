@@ -83,5 +83,11 @@ public class FormAdminController {
         return formAdminService.getFormWithTranslatedQuestions(id, targetLanguage);
     }
 
+    @GetMapping("/conditional-forms/{companyId}")
+    public ResponseEntity<List<SurveySectionDto>> getConditionalFormsForCompany(@PathVariable Long companyId) {
+        List<SurveySectionDto> forms = formAdminService.getConditionalFormsForCompany(companyId);
+        return ResponseEntity.ok(forms);
+    }
+
 
 }

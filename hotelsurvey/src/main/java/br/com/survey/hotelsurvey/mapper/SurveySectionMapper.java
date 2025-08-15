@@ -1,9 +1,11 @@
 
 package br.com.survey.hotelsurvey.mapper;
 
+import br.com.survey.hotelsurvey.dto.QuestionAnswerDetailDto;
 import br.com.survey.hotelsurvey.dto.QuestionDto;
 import br.com.survey.hotelsurvey.dto.SurveySectionDto;
 import br.com.survey.hotelsurvey.entity.Question;
+import br.com.survey.hotelsurvey.entity.QuestionAnswer;
 import br.com.survey.hotelsurvey.entity.SurveySection;
 import br.com.survey.hotelsurvey.repository.QuestionTranslationRepository;
 import org.springframework.stereotype.Component;
@@ -27,8 +29,11 @@ public class SurveySectionMapper {
 
         if (section.getCompany() != null) {
             dto.setCompanyId(section.getCompany().getId());
-            dto.setCompanyName(section.getCompany().getName()); // <- aqui adiciona o nome
+            dto.setCompanyName(section.getCompany().getName());
+            dto.setSerieEmpresa(section.getCompany().getSerieEmpresa());
+
         }
+
 
         return dto;
     }
@@ -37,6 +42,8 @@ public class SurveySectionMapper {
     private static QuestionDto toQuestionDto(Question q) {
         return new QuestionDto(
                 q.getId(),
+                //surveySectionId como o segundo argumento
+                q.getSurveySection() != null ? q.getSurveySection().getId() : null,
                 q.getType(),
                 q.getLabel(),
                 q.getDeniable() != null ? q.getDeniable() : false,
@@ -45,6 +52,8 @@ public class SurveySectionMapper {
                 q.getOptions()
         );
     }
+
+
 
 
     //método que surveySection para DTO com as questões traduzidas inclusas

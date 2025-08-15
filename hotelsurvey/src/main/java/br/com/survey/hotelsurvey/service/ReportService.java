@@ -33,14 +33,14 @@ public class ReportService {
 
     /**
      * Busca uma resposta de formulário específica pelo seu ID.
-     * @param id ID da resposta do formulário.
+     * @param serieEmpresa ID da resposta do formulário.
      * @return SurveyResponseDetailDto.
      * @throws ResourceNotFoundException Se a resposta não for encontrada.
      */
-    public SurveyResponseDetailDto getSurveyResponseById(Long id) {
-        return surveyResponseRepository.findById(id)
+    public SurveyResponseDetailDto getSurveyResponseBySerie(String serieEmpresa) {
+        return surveyResponseRepository.findBySerieEmpresa(serieEmpresa)
                 .map(this::convertToSurveyResponseDetailDto)
-                .orElseThrow(() -> new ResourceNotFoundException("Survey response not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Survey response not found with serieEmpresa: " + serieEmpresa));
     }
 
     /**
@@ -56,14 +56,12 @@ public class ReportService {
      */
     public List<SurveyResponseDetailDto> getFilteredSurveyResponses(
             Long companyId,
-            String companyName, // New parameter
+            String companyName,
+            String serieEmpresa, // novo parâmetro
             String language,
             LocalDateTime startDate,
             LocalDateTime endDate) {
 
-        // implementação simples de filtragem em memória.
-        // para grandes volumes de dados, considere usar métodos de repositório com @Query
-        // ou Spring Data JPA Specification/QueryDsl para filtragem no banco de dados.
         List<SurveyResponse> responses = surveyResponseRepository.findAll();
 
         return responses.stream()
@@ -72,21 +70,64 @@ public class ReportService {
                         (response.getCompany() != null &&
                                 StringUtils.hasText(response.getCompany().getName()) &&
                                 response.getCompany().getName().toLowerCase().contains(companyName.toLowerCase())))
-               // .filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
+                .filter(response -> !StringUtils.hasText(serieEmpresa) || // filtro por serieEmpresa
+                        (response.getCompany() != null &&
+                                StringUtils.hasText(response.getCompany().getSerieEmpresa()) &&
+                                response.getCompany().getSerieEmpresa().equalsIgnoreCase(serieEmpresa)))
+                //.filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
                 .filter(response -> startDate == null || response.getResponseDate().isAfter(startDate) || response.getResponseDate().isEqual(startDate))
                 .filter(response -> endDate == null || response.getResponseDate().isBefore(endDate) || response.getResponseDate().isEqual(endDate))
                 .map(this::convertToSurveyResponseDetailDto)
                 .collect(Collectors.toList());
     }
 
+//    public List<SurveyResponseDetailDto> getFilteredSurveyResponses(
+//            Long companyId,
+//            String companyName, // New parameter
+//            String language,
+//            LocalDateTime startDate,
+//            LocalDateTime endDate) {
+//
+//        // implementação simples de filtragem em memória.
+//        // para grandes volumes de dados, considere usar métodos de repositório com @Query
+//        // ou Spring Data JPA Specification/QueryDsl para filtragem no banco de dados.
+//        List<SurveyResponse> responses = surveyResponseRepository.findAll();
+//
+//        return responses.stream()
+//                .filter(response -> companyId == null || response.getCompany().getId().equals(companyId))
+//                .filter(response -> !StringUtils.hasText(companyName) ||
+//                        (response.getCompany() != null &&
+//                                StringUtils.hasText(response.getCompany().getName()) &&
+//                                response.getCompany().getName().toLowerCase().contains(companyName.toLowerCase())))
+//               // .filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
+//                .filter(response -> startDate == null || response.getResponseDate().isAfter(startDate) || response.getResponseDate().isEqual(startDate))
+//                .filter(response -> endDate == null || response.getResponseDate().isBefore(endDate) || response.getResponseDate().isEqual(endDate))
+//                .map(this::convertToSurveyResponseDetailDto)
+//                .collect(Collectors.toList());
+//    }
+
 
     // Helper para converter entidade SurveyResponse para SurveyResponseDetailDto
+//    private SurveyResponseDetailDto convertToSurveyResponseDetailDto(SurveyResponse entity) {
+//        SurveyResponseDetailDto dto = new SurveyResponseDetailDto();
+//        dto.setId(entity.getId());
+//        dto.setCompanyId(entity.getCompany().getId());
+//        dto.setCompanyName(entity.getCompany().getName()); // Assume que Company tem um campo 'name'
+//        //dto.setLanguage(entity.getLanguage());
+//        dto.setResponseDate(entity.getResponseDate());
+//        dto.setGuestIdentifier(entity.getGuestIdentifier());
+//        dto.setFreeTextFeedback(entity.getFreeTextFeedback());
+//        dto.setAnswers(entity.getAnswers().stream()
+//                .map(this::convertToQuestionAnswerDetailDto)
+//                .collect(Collectors.toList()));
+//        return dto;
+//    }
     private SurveyResponseDetailDto convertToSurveyResponseDetailDto(SurveyResponse entity) {
         SurveyResponseDetailDto dto = new SurveyResponseDetailDto();
         dto.setId(entity.getId());
         dto.setCompanyId(entity.getCompany().getId());
-        dto.setCompanyName(entity.getCompany().getName()); // Assume que Company tem um campo 'name'
-        //dto.setLanguage(entity.getLanguage());
+        dto.setCompanyName(entity.getCompany().getName());
+        dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa()); // populando o novo campo
         dto.setResponseDate(entity.getResponseDate());
         dto.setGuestIdentifier(entity.getGuestIdentifier());
         dto.setFreeTextFeedback(entity.getFreeTextFeedback());
@@ -95,6 +136,8 @@ public class ReportService {
                 .collect(Collectors.toList()));
         return dto;
     }
+
+
 
     // Helper para converter entidade QuestionAnswer para QuestionAnswerDetailDto
     private QuestionAnswerDetailDto convertToQuestionAnswerDetailDto(QuestionAnswer entity) {

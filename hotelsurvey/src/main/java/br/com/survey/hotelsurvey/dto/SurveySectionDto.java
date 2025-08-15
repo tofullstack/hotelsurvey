@@ -25,11 +25,18 @@ public class SurveySectionDto {
 
     private String companyName;
 
+    @NotNull(message = "Serie cannot be null")
+    private String serieEmpresa;
+
+    private Boolean conditional;
+
     private Boolean active = true;
 
     @Valid
     @Size(min = 1, message = "A survey section must have at least one question")
     private List<QuestionDto> questions;
+
+    private List<ConditionalTriggerRequest> triggers;
 
 
 }

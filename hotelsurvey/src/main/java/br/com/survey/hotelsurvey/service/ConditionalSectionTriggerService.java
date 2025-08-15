@@ -49,12 +49,13 @@ public class ConditionalSectionTriggerService {
 
         return triggers.stream()
                 .filter(trigger -> {
-                    // Converte a string "1,2" para uma lista de strings
+                    // converte a string "1,2" para uma lista de strings
                     List<String> triggerValues = Arrays.asList(trigger.getTriggerValue().split(","));
                     return triggerValues.contains(answerValue);
                 })
                 .map(ConditionalSectionTrigger::getTargetSection)
                 .map(section ->
+
                         sectionMapper.toDtoWithTranslatedQuestions(section, language, questionTranslationRepository)
                 )
                 .toList();

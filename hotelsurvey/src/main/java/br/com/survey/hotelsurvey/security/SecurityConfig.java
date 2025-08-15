@@ -45,16 +45,17 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                                .requestMatchers("/api/auth/**").permitAll()
 
-                        // permitir acesso GET para /questions e POST para /submit-response
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/survey/questions/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/survey/submit-response").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/survey/questions/{companyId}/{language}/{sectionId}").permitAll()
+                                // permitir acesso GET para /questions e POST para /submit-response
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/survey/questions/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/survey/submit-response").permitAll()
+                                .requestMatchers("/api/triggers/conditional-forms/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/survey/questions/{companyId}/{language}/{sectionId}").permitAll()
 //                        .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").hasAnyRole("USUARIO", "ADMIN")
-                        .anyRequest().authenticated()
+                                .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").hasAnyRole("USUARIO", "ADMIN")
+                                .anyRequest().authenticated()
                 );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -95,7 +96,6 @@ public class SecurityConfig {
         bean.setOrder(-102);
         return bean;
     }
-
 
 
 }
