@@ -25,6 +25,9 @@ public class SurveySection {
     private String name;
 
     @Column(nullable = false)
+    private String language;
+
+    @Column(nullable = false)
     private String serieEmpresa;
 
     @Column(nullable = false)

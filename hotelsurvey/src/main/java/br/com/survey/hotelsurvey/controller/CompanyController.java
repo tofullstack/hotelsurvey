@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/companies")
-@PreAuthorize("hasRole('ADMIN')") // apenas ADMIN pode gerenciar empresas
+@PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
 public class CompanyController {
 
     @Autowired
@@ -33,7 +33,6 @@ public class CompanyController {
             @RequestParam(required = false) String name,
             Pageable pageable) {
 
-        // Chama o service com os parâmetros de busca e paginação
         Page<CompanyDto> companiesPage = companyService.getAllCompanies(name, pageable);
         return ResponseEntity.ok(companiesPage);
     }

@@ -39,7 +39,6 @@ public class QuestionDto {
         this.label = label;
         this.deniable = deniable;
         this.mandatory = mandatory;
-//        this.required = required;
         this.options = options;
     }
 }

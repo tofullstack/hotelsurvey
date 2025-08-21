@@ -50,6 +50,7 @@ public class FormAdminService {
         surveySection.setName(dto.getName());
         surveySection.setCompany(company);
         surveySection.setActive(dto.getActive());
+        surveySection.setLanguage(dto.getLanguage());
         surveySection.setSerieEmpresa(dto.getSerieEmpresa());
         surveySection.setConditional(dto.getConditional());
 
@@ -57,7 +58,7 @@ public class FormAdminService {
 
         // mapeia e salva as perguntas para obter os IDs do banco de dados
         List<Question> questions = dto.getQuestions().stream()
-                .map(qDto -> convertToQuestionEntity(qDto, savedSection))
+                .map(qDto -> convertToQuestionEntity(qDto, savedSection,dto.getLanguage()))
                 .collect(Collectors.toList());
         questionRepository.saveAll(questions);
         savedSection.setQuestions(questions);
@@ -101,52 +102,47 @@ public class FormAdminService {
         existingSection.setName(dto.getName());
         existingSection.setCompany(company);
         existingSection.setActive(dto.getActive());
+        existingSection.setLanguage(dto.getLanguage());
         existingSection.setSerieEmpresa(dto.getSerieEmpresa());
         existingSection.setConditional(dto.getConditional());
 
-        // mapeamento de IDs temporários para IDs reais após o salvamento
-        Map<String, Long> tempIdToRealIdMap = new HashMap<>();
-
-        // limpa gatilhos e perguntas antigas
+        // Deletar triggers antigos
         triggerRepository.deleteAllByQuestionSurveySectionId(existingSection.getId());
-        questionRepository.deleteAllBySurveySectionId(existingSection.getId());
 
-        // separa as perguntas existentes das novas
-        List<QuestionDto> newQuestionDtos = dto.getQuestions().stream()
-                .filter(qDto -> qDto.getId() == null || qDto.getId().toString().startsWith("temp-"))
+        // Lógica de "merge" para as perguntas:
+        // 1. Converte todos os DTOs de perguntas para entidades, garantindo que os IDs sejam mantidos.
+        List<Question> newQuestionsEntities = dto.getQuestions().stream()
+                .map(qDto -> convertToQuestionEntity(qDto, existingSection, dto.getLanguage()))
                 .collect(Collectors.toList());
 
-        List<QuestionDto> existingQuestionDtos = dto.getQuestions().stream()
-                .filter(qDto -> qDto.getId() != null && !qDto.getId().toString().startsWith("temp-"))
-                .collect(Collectors.toList());
+        // 2. Limpa a lista de perguntas existente e a substitui pela nova lista.
+        //    O Hibernate vai gerenciar as deleções (orphanRemoval) e inserções/atualizações.
+        existingSection.getQuestions().clear();
+        existingSection.getQuestions().addAll(newQuestionsEntities);
 
-        // converte e salva as perguntas existentes
-        List<Question> savedExistingQuestions = existingQuestionDtos.stream()
-                .map(qDto -> convertToQuestionEntity(qDto, existingSection))
-                .collect(Collectors.toList());
-        questionRepository.saveAll(savedExistingQuestions);
-
-        // converte e salva as novas perguntas, e cria o mapeamento de IDs
-        List<Question> savedNewQuestions = newQuestionDtos.stream()
-                .map(qDto -> convertToQuestionEntity(qDto, existingSection))
-                .collect(Collectors.toList());
-        questionRepository.saveAll(savedNewQuestions);
-
-        // Mapeia os IDs temporários para os IDs reais gerados para novas perguntas
-        for (int i = 0; i < newQuestionDtos.size(); i++) {
-            tempIdToRealIdMap.put(newQuestionDtos.get(i).getId().toString(), savedNewQuestions.get(i).getId());
-        }
+        // Salva a entidade pai, o Hibernate cuida do resto
+        SurveySection updatedSection = surveySectionRepository.save(existingSection);
 
         // processa e salva os gatilhos
         if (dto.getTriggers() != null && !dto.getTriggers().isEmpty()) {
+            // Mapeamento de IDs temporários para IDs reais
+            Map<Long, Long> tempIdToRealIdMap = new HashMap<>();
+            for (Question question : updatedSection.getQuestions()) {
+                dto.getQuestions().stream()
+                        .filter(qDto -> qDto.getId() != null && qDto.getId().toString().startsWith("temp-"))
+                        .filter(qDto -> qDto.getLabel().equals(question.getLabel())) // Assumindo que o label é único
+                        .findFirst()
+                        .ifPresent(qDto -> tempIdToRealIdMap.put(Long.valueOf(qDto.getId().toString().replace("temp-", "")), question.getId()));
+            }
+
             List<ConditionalSectionTrigger> newTriggers = dto.getTriggers().stream()
                     .map(tDto -> {
                         Question question;
                         Long questionIdFromDto = tDto.getQuestionId();
-
                         // se for um ID temporário, usa o mapa para encontrar o ID real
                         if (tDto.getQuestionId() != null && tDto.getQuestionId().toString().startsWith("temp-")) {
-                            Long realId = tempIdToRealIdMap.get(tDto.getQuestionId().toString());
+                            Long originalTempId = Long.valueOf(tDto.getQuestionId().toString().replace("temp-", ""));
+                            Long realId = tempIdToRealIdMap.get(originalTempId);
                             if (realId == null) {
                                 throw new ValidationException("Temporal ID mapping failed for question: " + tDto.getQuestionId());
                             }
@@ -163,15 +159,8 @@ public class FormAdminService {
             triggerRepository.saveAll(newTriggers);
         }
 
-        // atualiza a lista de perguntas da entidade e salva
-        List<Question> allQuestions = new ArrayList<>(savedExistingQuestions);
-        allQuestions.addAll(savedNewQuestions);
-        existingSection.setQuestions(allQuestions);
-
-        SurveySection updatedSection = surveySectionRepository.save(existingSection);
         return convertToSurveySectionDto(updatedSection);
     }
-
     @Transactional
     public void deactivateForm(Long id) {
         SurveySection surveySection = surveySectionRepository.findById(id)
@@ -260,6 +249,7 @@ public class FormAdminService {
         dto.setName(entity.getName());
         dto.setSerieEmpresa(entity.getSerieEmpresa());
         dto.setConditional(entity.getConditional());
+        dto.setLanguage(entity.getLanguage());
         if (entity.getCompany() != null) {
             dto.setCompanyId(entity.getCompany().getId());
             dto.setCompanyName(entity.getCompany().getName());
@@ -289,35 +279,60 @@ public class FormAdminService {
         return dto;
     }
 
-    private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection) {
+    private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection, String formLanguage) {
         Question entity = new Question();
+
+        // Se o DTO tem um ID e não é temporário, configure o ID
         if (dto.getId() != null && !dto.getId().toString().startsWith("temp-")) {
             entity.setId(dto.getId());
         }
+
         entity.setSurveySection(surveySection);
+
+        // 1. Pega o label principal do DTO. Esta é a tradução no idioma padrão do formulário.
+        //    O front-end deve garantir que a 'label' principal seja a tradução correta.
+        //    Alternativamente, podemos usar a lógica de encontrar a tradução no array.
+
+        String primaryLabel = dto.getLabel(); // Opção mais simples: confiar no label principal do DTO
+
+        // Ou, para ser mais robusto:
+        /*
         String primaryLabel = dto.getTranslations().stream()
-                .map(t -> t.getLabel())
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElse("Default Question Label");
+            .filter(t -> formLanguage.equals(t.getLanguage()))
+            .map(QuestionTranslationDto::getLabel)
+            .findFirst()
+            .orElse(dto.getLabel()); // Fallback para o label original do DTO se não encontrar
+        */
+
         entity.setLabel(primaryLabel);
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
         entity.setDeniable(dto.getDeniable());
-//        entity.setRequired(dto.getRequired());
         entity.setOptions(dto.getOptions());
+
+        // 2. Mapeia as traduções do DTO para a entidade, excluindo o idioma principal
         entity.setTranslations(
-                dto.getTranslations().stream().map(t -> {
-                    var qt = new QuestionTranslation();
-                    qt.setLabel(t.getLabel());
-                    qt.setLanguage(t.getLanguage());
-                    qt.setQuestion(entity);
-                    return qt;
-                }).collect(Collectors.toSet())
+                dto.getTranslations().stream()
+                        .filter(t -> !formLanguage.equals(t.getLanguage())) // Filtra a tradução principal
+                        .map(t -> {
+                            var qt = new QuestionTranslation();
+                            qt.setLabel(t.getLabel());
+                            qt.setLanguage(t.getLanguage());
+                            qt.setQuestion(entity);
+                            return qt;
+                        }).collect(Collectors.toSet())
         );
+
+        // 3. Adiciona a tradução principal de volta ao conjunto, para garantir que ela exista
+        //    Isso evita problemas se o front-end não a enviar no array de traduções.
+        var primaryTranslation = new QuestionTranslation();
+        primaryTranslation.setLabel(primaryLabel);
+        primaryTranslation.setLanguage(formLanguage);
+        primaryTranslation.setQuestion(entity);
+        entity.getTranslations().add(primaryTranslation);
+
         return entity;
     }
-
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
@@ -326,7 +341,6 @@ public class FormAdminService {
         dto.setLabel(entity.getLabel());
         dto.setMandatory(entity.getMandatory());
         dto.setDeniable(entity.getDeniable());
-//        dto.setRequired(entity.getRequired());
         dto.setOptions(entity.getOptions());
         dto.setTranslations(
                 entity.getTranslations().stream().map(t -> {
@@ -334,7 +348,7 @@ public class FormAdminService {
                     tDto.setLabel(t.getLabel());
                     tDto.setLanguage(t.getLanguage());
                     return tDto;
-                }).collect(Collectors.toList()) // Corrigido para toList()
+                }).collect(Collectors.toList())
         );
         return dto;
     }
@@ -385,7 +399,6 @@ public class FormAdminService {
                     qDto.setType(questionEntity.getType());
                     qDto.setDeniable(questionEntity.getDeniable());
                     qDto.setMandatory(questionEntity.getMandatory());
-//                    qDto.setRequired(questionEntity.getRequired());
                     qDto.setOptions(questionEntity.getOptions());
 
                     String finalQuestionLabel = questionEntity.getTranslations().stream()

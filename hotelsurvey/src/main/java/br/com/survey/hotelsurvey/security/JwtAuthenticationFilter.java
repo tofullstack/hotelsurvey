@@ -24,20 +24,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = getJwtFromRequest(request);
-            String requestURI = request.getRequestURI(); // Adicione esta linha para logar a URI
+            String requestURI = request.getRequestURI(); // para logar a URI
 
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                Authentication authentication = tokenProvider.getAuthentication(jwt); // Obtenha a autenticação
+                Authentication authentication = tokenProvider.getAuthentication(jwt); // obter a autenticação
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                // --- ADICIONE ESTAS LINHAS DE DEBUG TEMPORARIAMENTE ---
+                // --- DEBUG TEMPORARIO ---
                 logger.info("Request URI: " + requestURI);
                 logger.info("JWT valid and authentication set for user: " + authentication.getName());
                 authentication.getAuthorities().forEach(a -> logger.info("User authority: " + a.getAuthority()));
                 // --- FIM DO DEBUG TEMPORÁRIO ---
 
             } else {
-                // --- ADICIONE ESTAS LINHAS DE DEBUG TEMPORARIAMENTE ---
+                // --- DEBUG TEMPORARIO ---
                 logger.info("Request URI: " + requestURI);
                 if (!StringUtils.hasText(jwt)) {
                     logger.warn("JWT is missing or empty for URI: " + requestURI);

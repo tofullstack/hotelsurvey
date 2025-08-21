@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/reports")
-@PreAuthorize("hasRole('ADMIN')") // Apenas ADMINs podem acessar relatórios
+@PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
 public class ReportController {
 
     @Autowired

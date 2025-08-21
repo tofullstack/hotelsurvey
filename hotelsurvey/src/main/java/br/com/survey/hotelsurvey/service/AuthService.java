@@ -46,7 +46,7 @@ public class AuthService {
     @Autowired
     private CompanyRepository companyRepository;
 
-    // A senha deve conter no mínimo: 8 caracteres, 1 letra maiúscula, 1 letra minúscula, 1 número
+    // senha deve conter no mínimo: 8 caracteres, 1 letra maiúscula, 1 letra minúscula, 1 número
     private static final String PASSWORD_REGEX = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$";
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(PASSWORD_REGEX);
 
@@ -124,6 +124,24 @@ public class AuthService {
         return convertToUserDto(savedUser);
     }
 
+
+    @Transactional
+    public UserDto updateUser(Long userId, UserDto userDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+
+        if (userDto.getProfile() != null) {
+            user.setProfile(userDto.getProfile());
+        }
+        if (userDto.getCompanyId() != null) {
+            Company company = companyRepository.findById(userDto.getCompanyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + userDto.getCompanyId()));
+            user.setCompany(company);
+        }
+
+        User updatedUser = userRepository.save(user);
+        return convertToUserDto(updatedUser);
+    }
     /**
      * Permite que um usuário autenticado troque sua senha.
      * @param userId ID do usuário que está trocando a senha.
@@ -202,7 +220,6 @@ public class AuthService {
         return convertToUserDto(user);
     }
 
-    // Helper para converter entidade em DTO
     private UserDto convertToUserDto(User user) {
         UserDto userDto = new UserDto();
         userDto.setId(user.getId());

@@ -37,7 +37,7 @@ public class PublicApiService {
         PublicSurveySectionDto dto = new PublicSurveySectionDto();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-        dto.setCompanyId(entity.getCompany().getId()); // <-- ADICIONE ESTA LINHA PARA PREENCHER O CAMPO
+        dto.setCompanyId(entity.getCompany().getId());
         dto.setQuestions(entity.getQuestions().stream()
                 .map(question -> toPublicDto(question, language))
                 .collect(Collectors.toList())
@@ -51,7 +51,6 @@ public class PublicApiService {
         dto.setId(question.getId());
         dto.setType(question.getType().name());
         dto.setMandatory(question.getMandatory());
-//        dto.setRequired(question.getRequired());
         dto.setOptions(question.getOptions());
 
         String label = question.getTranslations().stream()

@@ -38,21 +38,29 @@ public class AuthController {
     }
 
     @PutMapping("/users/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')") // only ADMIN can deactivate users
+    @PreAuthorize("hasRole('ADMIN')") // apenas ADMIN pode desativar
     public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
         authService.deactivateUser(id);
         return ResponseEntity.noContent().build();
     }
 
+    // Novo endpoint para edição de usuário
+    @PutMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @Valid @RequestBody UserDto userDto) {
+        UserDto updatedUser = authService.updateUser(id, userDto);
+        return ResponseEntity.ok(updatedUser);
+    }
+
     @PutMapping("/users/{id}/activate")
-    @PreAuthorize("hasRole('ADMIN')") // Only ADMIN can activate users
+    @PreAuthorize("hasRole('ADMIN')") // apenas ADMIN pode ativar
     public ResponseEntity<Void> activateUser(@PathVariable Long id) {
         authService.activateUser(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/change-password")
-    @PreAuthorize("isAuthenticated()") // Any authenticated user can change their password
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> changePassword(@AuthenticationPrincipal User user, @Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(user.getId(), request);
         return ResponseEntity.noContent().build();
@@ -66,7 +74,7 @@ public class AuthController {
     }
 
     @GetMapping("/users/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.isUser(#id)") // ADMIN or the user themselves
+    @PreAuthorize("hasRole('ADMIN') or @securityService.isUser(#id)")
     public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
         UserDto user = authService.getUserById(id);
         return ResponseEntity.ok(user);

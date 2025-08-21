@@ -25,6 +25,8 @@ public class SurveySectionDto {
 
     private String companyName;
 
+    private String language;
+
     @NotNull(message = "Serie cannot be null")
     private String serieEmpresa;
 

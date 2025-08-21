@@ -76,7 +76,7 @@ public class FormAdminController {
 
 
     // novo endpoint para buscar o formulário por ID e idioma desejado
-    @GetMapping("/questions/{id}/language/{targetLanguage}") // ajuste de rota
+    @GetMapping("/questions/{id}/language/{targetLanguage}")
     public SurveySectionDto getSurveyFormInLanguage(
             @PathVariable Long id,
             @PathVariable String targetLanguage) {

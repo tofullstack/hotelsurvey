@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                                .requestMatchers("/api/auth/login").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()
 
                                 // permitir acesso GET para /questions e POST para /submit-response
@@ -54,7 +55,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/triggers/conditional-forms/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/survey/questions/{companyId}/{language}/{sectionId}").permitAll()
 //                        .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").authenticated()
+
                                 .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").hasAnyRole("USUARIO", "ADMIN")
+                                .requestMatchers("/api/auth/**").authenticated()
 
                                 .anyRequest().authenticated()
                 );
@@ -63,18 +66,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-//    @Bean
-//    public CorsFilter corsFilter() {
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        CorsConfiguration config = new CorsConfiguration();
-//        config.setAllowCredentials(true);
-//        config.addAllowedOrigin("http://localhost:5173");
-//        config.addAllowedHeader("*");
-//        config.addAllowedMethod("*");
-//        source.registerCorsConfiguration("/**", config);
-//        return new CorsFilter(source);
-//    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
