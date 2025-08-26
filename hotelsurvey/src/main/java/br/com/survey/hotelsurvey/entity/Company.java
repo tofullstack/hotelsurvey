@@ -21,4 +21,7 @@ public class Company {
 
     @Column(nullable = false, unique = true)
     private String serieEmpresa;
+
+    @Column(nullable = false)
+    private Boolean active = true;
 }

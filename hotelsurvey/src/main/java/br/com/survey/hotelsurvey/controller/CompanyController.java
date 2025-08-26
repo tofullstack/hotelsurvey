@@ -11,8 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/companies")
 @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
@@ -31,11 +29,16 @@ public class CompanyController {
     @GetMapping
     public ResponseEntity<Page<CompanyDto>> getAllCompanies(
             @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "active") String status,
             Pageable pageable) {
 
-        Page<CompanyDto> companiesPage = companyService.getAllCompanies(name, pageable);
+        Page<CompanyDto> companiesPage = companyService.getAllCompanies(name, status, pageable);
         return ResponseEntity.ok(companiesPage);
     }
+
+
+
+
 
     @GetMapping("/{id}")
     public ResponseEntity<CompanyDto> getCompanyById(@PathVariable Long id) {
@@ -54,6 +57,16 @@ public class CompanyController {
         companyService.deleteCompany(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Void> updateCompanyStatus(
+            @PathVariable Long id,
+            @RequestParam boolean active) {
+
+        companyService.setCompanyActiveStatus(id, active);
+        return ResponseEntity.ok().build();
+    }
+
 
 
 }

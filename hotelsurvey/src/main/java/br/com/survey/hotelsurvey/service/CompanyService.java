@@ -9,8 +9,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class CompanyService {
@@ -30,18 +30,23 @@ public class CompanyService {
         return convertToDto(savedCompany);
     }
 
-    // Este é o método correto e único para buscar empresas
-    public Page<CompanyDto> getAllCompanies(String name, Pageable pageable) {
+    public Page<CompanyDto> getAllCompanies(String name, String status, Pageable pageable) {
         Page<Company> companiesPage;
 
-        // Lógica para decidir se a busca é com filtro ou sem
-        if (StringUtils.hasText(name)) {
-            companiesPage = companyRepository.findByNameContainingIgnoreCase(name, pageable);
-        } else {
-            companiesPage = companyRepository.findAll(pageable);
+        if ("inactive".equalsIgnoreCase(status)) {
+            companiesPage = StringUtils.hasText(name)
+                    ? companyRepository.findByNameContainingIgnoreCaseAndActiveFalse(name, pageable)
+                    : companyRepository.findByActiveFalse(pageable);
+        } else if ("all".equalsIgnoreCase(status)) {
+            companiesPage = StringUtils.hasText(name)
+                    ? companyRepository.findByNameContainingIgnoreCase(name, pageable)
+                    : companyRepository.findAll(pageable);
+        } else { // ativo por padrão
+            companiesPage = StringUtils.hasText(name)
+                    ? companyRepository.findByNameContainingIgnoreCaseAndActiveTrue(name, pageable)
+                    : companyRepository.findByActiveTrue(pageable);
         }
 
-        // Converte a Page de Company para uma Page de CompanyDto
         return companiesPage.map(this::convertToDto);
     }
 
@@ -70,14 +75,26 @@ public class CompanyService {
     // soft delete
     @Transactional
     public void deleteCompany(Long id) {
-        companyRepository.deleteById(id);
+        Company company = companyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + id));
+        company.setActive(false);
+        companyRepository.save(company);
     }
+
+    public void setCompanyActiveStatus(Long companyId, boolean active) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada"));
+        company.setActive(active);
+        companyRepository.save(company);
+    }
+
 
     private CompanyDto convertToDto(Company company) {
         CompanyDto dto = new CompanyDto();
         dto.setId(company.getId());
         dto.setName(company.getName());
         dto.setSerieEmpresa(company.getSerieEmpresa());
+        dto.setActive(company.getActive());
         return dto;
     }
 }

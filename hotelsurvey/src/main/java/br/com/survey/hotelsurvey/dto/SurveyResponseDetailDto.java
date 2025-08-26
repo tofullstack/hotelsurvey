@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 public class SurveyResponseDetailDto {
     private Long id;
+    private String language;
     private Long companyId;
     private String companyName;
     private String serieEmpresa; //novo campo para inclusao da serie

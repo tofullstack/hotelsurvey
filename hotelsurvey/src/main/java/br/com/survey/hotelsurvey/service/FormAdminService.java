@@ -56,18 +56,15 @@ public class FormAdminService {
 
         SurveySection savedSection = surveySectionRepository.save(surveySection);
 
-        // mapeia e salva as perguntas para obter os IDs do banco de dados
         List<Question> questions = dto.getQuestions().stream()
                 .map(qDto -> convertToQuestionEntity(qDto, savedSection,dto.getLanguage()))
                 .collect(Collectors.toList());
         questionRepository.saveAll(questions);
         savedSection.setQuestions(questions);
 
-        // processa e salva os gatilhos
         if (dto.getTriggers() != null && !dto.getTriggers().isEmpty()) {
             List<ConditionalSectionTrigger> triggers = dto.getTriggers().stream()
                     .map(tDto -> {
-                        // encontra a entidade Question salva usando o índice da lista
                         int questionIndex = tDto.getQuestionId().intValue();
                         if (questionIndex < 0 || questionIndex >= questions.size()) {
                             throw new ValidationException("Question index for trigger is out of bounds: " + tDto.getQuestionId());
@@ -87,7 +84,6 @@ public class FormAdminService {
         SurveySection existingSection = surveySectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + id));
 
-        // validações
         if (!existingSection.getName().equals(dto.getName()) || !existingSection.getCompany().getId().equals(dto.getCompanyId())) {
             if (surveySectionRepository.existsByNameAndCompanyId(dto.getName(), dto.getCompanyId())) {
                 throw new DuplicateEntryException("A form with this name and company already exists.");
@@ -106,26 +102,18 @@ public class FormAdminService {
         existingSection.setSerieEmpresa(dto.getSerieEmpresa());
         existingSection.setConditional(dto.getConditional());
 
-        // Deletar triggers antigos
         triggerRepository.deleteAllByQuestionSurveySectionId(existingSection.getId());
 
-        // Lógica de "merge" para as perguntas:
-        // 1. Converte todos os DTOs de perguntas para entidades, garantindo que os IDs sejam mantidos.
         List<Question> newQuestionsEntities = dto.getQuestions().stream()
                 .map(qDto -> convertToQuestionEntity(qDto, existingSection, dto.getLanguage()))
                 .collect(Collectors.toList());
 
-        // 2. Limpa a lista de perguntas existente e a substitui pela nova lista.
-        //    O Hibernate vai gerenciar as deleções (orphanRemoval) e inserções/atualizações.
         existingSection.getQuestions().clear();
         existingSection.getQuestions().addAll(newQuestionsEntities);
 
-        // Salva a entidade pai, o Hibernate cuida do resto
         SurveySection updatedSection = surveySectionRepository.save(existingSection);
 
-        // processa e salva os gatilhos
         if (dto.getTriggers() != null && !dto.getTriggers().isEmpty()) {
-            // Mapeamento de IDs temporários para IDs reais
             Map<Long, Long> tempIdToRealIdMap = new HashMap<>();
             for (Question question : updatedSection.getQuestions()) {
                 dto.getQuestions().stream()
@@ -282,38 +270,23 @@ public class FormAdminService {
     private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection, String formLanguage) {
         Question entity = new Question();
 
-        // Se o DTO tem um ID e não é temporário, configure o ID
         if (dto.getId() != null && !dto.getId().toString().startsWith("temp-")) {
             entity.setId(dto.getId());
         }
 
         entity.setSurveySection(surveySection);
 
-        // 1. Pega o label principal do DTO. Esta é a tradução no idioma padrão do formulário.
-        //    O front-end deve garantir que a 'label' principal seja a tradução correta.
-        //    Alternativamente, podemos usar a lógica de encontrar a tradução no array.
 
-        String primaryLabel = dto.getLabel(); // Opção mais simples: confiar no label principal do DTO
-
-        // Ou, para ser mais robusto:
-        /*
-        String primaryLabel = dto.getTranslations().stream()
-            .filter(t -> formLanguage.equals(t.getLanguage()))
-            .map(QuestionTranslationDto::getLabel)
-            .findFirst()
-            .orElse(dto.getLabel()); // Fallback para o label original do DTO se não encontrar
-        */
-
+        String primaryLabel = dto.getLabel();
         entity.setLabel(primaryLabel);
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
         entity.setDeniable(dto.getDeniable());
         entity.setOptions(dto.getOptions());
 
-        // 2. Mapeia as traduções do DTO para a entidade, excluindo o idioma principal
         entity.setTranslations(
                 dto.getTranslations().stream()
-                        .filter(t -> !formLanguage.equals(t.getLanguage())) // Filtra a tradução principal
+                        .filter(t -> !formLanguage.equals(t.getLanguage()))
                         .map(t -> {
                             var qt = new QuestionTranslation();
                             qt.setLabel(t.getLabel());
@@ -323,8 +296,7 @@ public class FormAdminService {
                         }).collect(Collectors.toSet())
         );
 
-        // 3. Adiciona a tradução principal de volta ao conjunto, para garantir que ela exista
-        //    Isso evita problemas se o front-end não a enviar no array de traduções.
+
         var primaryTranslation = new QuestionTranslation();
         primaryTranslation.setLabel(primaryLabel);
         primaryTranslation.setLanguage(formLanguage);

@@ -11,7 +11,7 @@ import br.com.survey.hotelsurvey.repository.*;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils; // Certifique-se de que este import está lá
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -46,27 +46,24 @@ public class SurveyResponseService {
     @Transactional
     public Long submitSurveyResponse(SurveyResponseRequest request) {
 
-        // 1. Validate and fetch the Company
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + request.getCompanyId()));
 
-        // 2. Create the SurveyResponse entity
         SurveyResponse surveyResponse = new SurveyResponse();
         surveyResponse.setCompany(company);
         surveyResponse.setResponseDate(LocalDateTime.now());
         surveyResponse.setGuestIdentifier(request.getGuestIdentifier());
         surveyResponse.setFreeTextFeedback(request.getFreeTextFeedback());
         surveyResponse.setSerieEmpresa(company.getSerieEmpresa());
+        surveyResponse.setLanguage(request.getLanguage()); // <-- Adicione esta linha
 
         SurveyResponse savedSurveyResponse = surveyResponseRepository.save(surveyResponse);
 
         List<QuestionAnswer> answers = new ArrayList<>();
-        // Map to store active survey sections and questions for efficient validation
         Map<Long, SurveySection> activeSections = new HashMap<>();
         Map<Long, Question> activeQuestions = new HashMap<>();
 
-        // Corrected: Pre-load all active sections and their questions for the company.
-        // Ensure that you have a method in your repository that fetches questions eagerly.
+
         List<SurveySection> sectionsForCompany = surveySectionRepository.findByCompanyIdAndActiveTrueWithQuestions(company.getId());
         for (SurveySection section : sectionsForCompany) {
             activeSections.put(section.getId(), section);
@@ -75,7 +72,6 @@ public class SurveyResponseService {
             }
         }
 
-        // Process and validate each individual answer
         for (QuestionAnswerRequest answerRequest : request.getAnswers()) {
             SurveySection surveySection = activeSections.get(answerRequest.getSurveySectionId());
             if (surveySection == null) {
@@ -87,22 +83,18 @@ public class SurveyResponseService {
                 throw new ValidationException("Question with ID " + answerRequest.getQuestionId() + " is not active, does not exist, or does not belong to section " + answerRequest.getSurveySectionId());
             }
 
-            // Validation 1: Do not allow 'didNotUseService' if the question is not deniable
             if (!Boolean.TRUE.equals(question.getDeniable()) && Boolean.TRUE.equals(answerRequest.getDidNotUseService())) {
                 throw new ValidationException("Question '" + question.getLabel() + "' cannot be marked as 'did not use service'. It requires a direct response.");
             }
 
-            // Validation 2: If the question is mandatory AND the service WAS USED, the answer value CANNOT be blank.
             if (Boolean.TRUE.equals(question.getMandatory()) && !Boolean.TRUE.equals(answerRequest.getDidNotUseService()) && !StringUtils.hasText(answerRequest.getAnswerValue())) {
                 throw new ValidationException("Mandatory question '" + question.getLabel() + "' requires an answer.");
             }
 
-            // Validation 3: If the service WAS NOT USED, the answer value MUST be blank.
             if (Boolean.TRUE.equals(answerRequest.getDidNotUseService()) && StringUtils.hasText(answerRequest.getAnswerValue())) {
                 throw new ValidationException("You cannot provide an answer to a question marked as 'did not use service'. Answer value must be blank.");
             }
 
-            // Specific validations by question type, only if the service WAS USED
             if (!Boolean.TRUE.equals(answerRequest.getDidNotUseService())) {
                 if (question.getType() == QuestionType.SCALE) {
                     try {
@@ -141,7 +133,6 @@ public class SurveyResponseService {
         questionAnswerRepository.saveAll(answers);
         return savedSurveyResponse.getId();
     }
-
     // novo método para buscar detalhes
     public SurveyResponseDetailDto getSurveyResponseById(Long id) {
         SurveyResponse entity = surveyResponseRepository.findById(id)

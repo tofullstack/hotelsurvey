@@ -13,6 +13,11 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
     Optional<Company> findByName(String name);
 
+    Page<Company> findByActiveTrue(Pageable pageable);
+    Page<Company> findByActiveFalse(Pageable pageable);
+
+    Page<Company> findByNameContainingIgnoreCaseAndActiveTrue(String name, Pageable pageable);
+    Page<Company> findByNameContainingIgnoreCaseAndActiveFalse(String name, Pageable pageable);
 
     Page<Company> findByNameContainingIgnoreCase(String name, Pageable pageable);
 }

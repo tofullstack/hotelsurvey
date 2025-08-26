@@ -54,7 +54,6 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, "/api/survey/submit-response").permitAll()
                                 .requestMatchers("/api/triggers/conditional-forms/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/survey/questions/{companyId}/{language}/{sectionId}").permitAll()
-//                        .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").authenticated()
 
                                 .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").hasAnyRole("USUARIO", "ADMIN")
                                 .requestMatchers("/api/auth/**").authenticated()

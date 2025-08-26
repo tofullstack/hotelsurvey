@@ -34,11 +34,11 @@ public class DataInitializer {
 
                 User admin = new User();
                 admin.setLogin(login);
-                admin.setPassword(encoder.encode("admin123")); // senha criptografada
+                admin.setPassword(encoder.encode("admin123"));
                 admin.setActive(true);
-                admin.setMustChangePassword(true); // força troca de senha no primeiro login
+                admin.setMustChangePassword(true);
                 admin.setProfile(UserProfile.ADMIN);
-                admin.setCompany(company); // associa com empresa criada ou existente
+                admin.setCompany(company);
 
                 userRepository.save(admin);
                 System.out.println("Usuário admin criado com sucesso.");

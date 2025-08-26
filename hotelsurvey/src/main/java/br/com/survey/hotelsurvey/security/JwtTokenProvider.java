@@ -37,16 +37,16 @@ public class JwtTokenProvider {
         this.jwtExpirationInMs = jwtExpirationInMs;
     }
     public String generateToken(Authentication authentication) {
-        User userPrincipal = (User) authentication.getPrincipal(); // cast direto para User
+        User userPrincipal = (User) authentication.getPrincipal();
 
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
         return Jwts.builder()
-                .setSubject(userPrincipal.getUsername())          // login
-                .claim("userId", userPrincipal.getId())          // id do usuário
-                .claim("profile", userPrincipal.getProfile())    // perfil
-                .claim("mustChangePassword", userPrincipal.getMustChangePassword()) // força troca de senha
+                .setSubject(userPrincipal.getUsername())
+                .claim("userId", userPrincipal.getId())
+                .claim("profile", userPrincipal.getProfile())
+                .claim("mustChangePassword", userPrincipal.getMustChangePassword())
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(privateKey, SignatureAlgorithm.RS256)
@@ -56,14 +56,14 @@ public class JwtTokenProvider {
 
 
     public Authentication getAuthentication(String token) {
-        String username = getUsernameFromJWT(token); // pega o username do JWT
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username); // carrega o user
+        String username = getUsernameFromJWT(token);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }
 
     public String getUsernameFromJWT(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(publicKey) // valida com chave pública
+                .setSigningKey(publicKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody()

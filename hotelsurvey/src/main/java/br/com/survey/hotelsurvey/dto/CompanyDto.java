@@ -15,4 +15,6 @@ public class CompanyDto {
 
     @NotBlank(message = "Serie cannot be blank")
     private String serieEmpresa;
+
+    private Boolean active;
 }

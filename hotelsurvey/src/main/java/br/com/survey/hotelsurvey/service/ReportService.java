@@ -1,16 +1,28 @@
 package br.com.survey.hotelsurvey.service;
 
 import br.com.survey.hotelsurvey.dto.QuestionAnswerDetailDto;
+import br.com.survey.hotelsurvey.dto.ReportSummaryDto;
 import br.com.survey.hotelsurvey.dto.SurveyResponseDetailDto;
 import br.com.survey.hotelsurvey.entity.QuestionAnswer;
+import br.com.survey.hotelsurvey.entity.QuestionType;
 import br.com.survey.hotelsurvey.entity.SurveyResponse;
-import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.repository.SurveyResponseRepository;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils; // Import for StringUtils
+import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,114 +32,159 @@ public class ReportService {
     @Autowired
     private SurveyResponseRepository surveyResponseRepository;
 
-    /**
-     * Busca todas as respostas de formulários cadastradas.
-     * Pode ser estendido com filtros por empresa, idioma, data, etc.
-     * @return Lista de SurveyResponseDetailDto.
-     */
-    public List<SurveyResponseDetailDto> getAllSurveyResponses() {
-        return surveyResponseRepository.findAll().stream()
+    public List<SurveyResponseDetailDto> getSurveyResponsesBySerie(String serieEmpresa) {
+        return surveyResponseRepository.findByCompanySerieEmpresaIgnoreCase(serieEmpresa).stream()
                 .map(this::convertToSurveyResponseDetailDto)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Busca uma resposta de formulário específica pelo seu ID.
-     * @param serieEmpresa ID da resposta do formulário.
-     * @return SurveyResponseDetailDto.
-     * @throws ResourceNotFoundException Se a resposta não for encontrada.
-     */
-    public SurveyResponseDetailDto getSurveyResponseBySerie(String serieEmpresa) {
-        return surveyResponseRepository.findBySerieEmpresa(serieEmpresa)
-                .map(this::convertToSurveyResponseDetailDto)
-                .orElseThrow(() -> new ResourceNotFoundException("Survey response not found with serieEmpresa: " + serieEmpresa));
-    }
-
-    /**
-     * Busca respostas de formulários filtradas por empresa e/ou idioma e/ou período.
-     * Este é um exemplo básico; pode ser expandido com Specification ou QueryDsl para filtros mais complexos.
-     *
-     * @param companyId   (Opcional) Filtra por ID da empresa.
-     * @param companyName (Opcional) Filtra pelo nome da empresa (parcial e case-insensitive).
-     * @param language    (Opcional) Filtra por idioma.
-     * @param startDate   (Opcional) Filtra respostas a partir desta data/hora.
-     * @param endDate     (Opcional) Filtra respostas até esta data/hora.
-     * @return Lista de SurveyResponseDetailDto.
-     */
-    public List<SurveyResponseDetailDto> getFilteredSurveyResponses(
+    public ReportSummaryDto getFilteredSurveyResponses(
             Long companyId,
             String companyName,
-            String serieEmpresa, // novo parâmetro
+            String serieEmpresa,
             String language,
             LocalDateTime startDate,
             LocalDateTime endDate) {
 
-        List<SurveyResponse> responses = surveyResponseRepository.findAll();
+        Specification<SurveyResponse> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
 
-        return responses.stream()
-                .filter(response -> companyId == null || response.getCompany().getId().equals(companyId))
-                .filter(response -> !StringUtils.hasText(companyName) ||
-                        (response.getCompany() != null &&
-                                StringUtils.hasText(response.getCompany().getName()) &&
-                                response.getCompany().getName().toLowerCase().contains(companyName.toLowerCase())))
-                .filter(response -> !StringUtils.hasText(serieEmpresa) || // filtro por serieEmpresa
-                        (response.getCompany() != null &&
-                                StringUtils.hasText(response.getCompany().getSerieEmpresa()) &&
-                                response.getCompany().getSerieEmpresa().equalsIgnoreCase(serieEmpresa)))
-                //.filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
-                .filter(response -> startDate == null || response.getResponseDate().isAfter(startDate) || response.getResponseDate().isEqual(startDate))
-                .filter(response -> endDate == null || response.getResponseDate().isBefore(endDate) || response.getResponseDate().isEqual(endDate))
+            if (companyId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("company").get("id"), companyId));
+            }
+            if (StringUtils.hasText(companyName)) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("company").get("name")), "%" + companyName.toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(serieEmpresa)) {
+                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("company").get("serieEmpresa")), serieEmpresa.toLowerCase()));
+            }
+            if (StringUtils.hasText(language)) {
+                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("language")), language.toLowerCase()));
+            }
+            if (startDate != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("responseDate"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("responseDate"), endDate.plusSeconds(1)));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<SurveyResponse> responses = surveyResponseRepository.findAll(spec);
+
+        List<SurveyResponseDetailDto> detailDtos = responses.stream()
                 .map(this::convertToSurveyResponseDetailDto)
                 .collect(Collectors.toList());
+
+        double totalRating = 0;
+        long ratingCount = 0;
+
+        for (SurveyResponseDetailDto responseDto : detailDtos) {
+            for (QuestionAnswerDetailDto answerDto : responseDto.getAnswers()) {
+                if (answerDto.getQuestionType() == QuestionType.SCALE && !Boolean.TRUE.equals(answerDto.getDidNotUseService())) {
+                    try {
+                        totalRating += Double.parseDouble(answerDto.getAnswerValue());
+                        ratingCount++;
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+        }
+
+        Double averageRating = (ratingCount > 0) ? totalRating / ratingCount : null;
+
+        return new ReportSummaryDto(responses.size(), averageRating, detailDtos);
     }
 
-//    public List<SurveyResponseDetailDto> getFilteredSurveyResponses(
-//            Long companyId,
-//            String companyName, // New parameter
-//            String language,
-//            LocalDateTime startDate,
-//            LocalDateTime endDate) {
-//
-//        // implementação simples de filtragem em memória.
-//        // para grandes volumes de dados, considere usar métodos de repositório com @Query
-//        // ou Spring Data JPA Specification/QueryDsl para filtragem no banco de dados.
-//        List<SurveyResponse> responses = surveyResponseRepository.findAll();
-//
-//        return responses.stream()
-//                .filter(response -> companyId == null || response.getCompany().getId().equals(companyId))
-//                .filter(response -> !StringUtils.hasText(companyName) ||
-//                        (response.getCompany() != null &&
-//                                StringUtils.hasText(response.getCompany().getName()) &&
-//                                response.getCompany().getName().toLowerCase().contains(companyName.toLowerCase())))
-//               // .filter(response -> language == null || response.getLanguage().equalsIgnoreCase(language))
-//                .filter(response -> startDate == null || response.getResponseDate().isAfter(startDate) || response.getResponseDate().isEqual(startDate))
-//                .filter(response -> endDate == null || response.getResponseDate().isBefore(endDate) || response.getResponseDate().isEqual(endDate))
-//                .map(this::convertToSurveyResponseDetailDto)
-//                .collect(Collectors.toList());
-//    }
+    public byte[] downloadReport(
+            Long companyId,
+            String companyName,
+            String serieEmpresa,
+            String language,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            String format) throws IOException, DocumentException {
 
+        List<SurveyResponseDetailDto> responses = getFilteredSurveyResponses(
+                companyId,
+                companyName,
+                serieEmpresa,
+                language,
+                startDate,
+                endDate
+        ).getResponses();
 
-    // Helper para converter entidade SurveyResponse para SurveyResponseDetailDto
-//    private SurveyResponseDetailDto convertToSurveyResponseDetailDto(SurveyResponse entity) {
-//        SurveyResponseDetailDto dto = new SurveyResponseDetailDto();
-//        dto.setId(entity.getId());
-//        dto.setCompanyId(entity.getCompany().getId());
-//        dto.setCompanyName(entity.getCompany().getName()); // Assume que Company tem um campo 'name'
-//        //dto.setLanguage(entity.getLanguage());
-//        dto.setResponseDate(entity.getResponseDate());
-//        dto.setGuestIdentifier(entity.getGuestIdentifier());
-//        dto.setFreeTextFeedback(entity.getFreeTextFeedback());
-//        dto.setAnswers(entity.getAnswers().stream()
-//                .map(this::convertToQuestionAnswerDetailDto)
-//                .collect(Collectors.toList()));
-//        return dto;
-//    }
+        if ("pdf".equalsIgnoreCase(format)) {
+            return generatePdfReport(responses);
+        } else if ("xml".equalsIgnoreCase(format)) {
+            return generateXmlReport(responses);
+        } else {
+            throw new IllegalArgumentException("Formato de relatório inválido: " + format);
+        }
+    }
+
+    private byte[] generatePdfReport(List<SurveyResponseDetailDto> responses) throws DocumentException {
+        Document document = new Document();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try {
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            Font fontTitle = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
+            Paragraph title = new Paragraph("Relatório de Pesquisas", fontTitle);
+            title.setAlignment(Element.ALIGN_CENTER);
+            document.add(title);
+            document.add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(4);
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(10f);
+            table.setSpacingAfter(10f);
+
+            Font fontHeader = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12);
+            table.addCell(new PdfPCell(new Phrase("ID", fontHeader)));
+            table.addCell(new PdfPCell(new Phrase("Empresa", fontHeader)));
+            table.addCell(new PdfPCell(new Phrase("Data", fontHeader)));
+            table.addCell(new PdfPCell(new Phrase("Feedback", fontHeader)));
+
+            Font fontData = FontFactory.getFont(FontFactory.HELVETICA, 10);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            for (SurveyResponseDetailDto response : responses) {
+                table.addCell(new PdfPCell(new Phrase(response.getId().toString(), fontData)));
+                table.addCell(new PdfPCell(new Phrase(response.getCompanyName(), fontData)));
+                table.addCell(new PdfPCell(new Phrase(response.getResponseDate().format(formatter), fontData)));
+                table.addCell(new PdfPCell(new Phrase(response.getFreeTextFeedback(), fontData)));
+            }
+
+            document.add(table);
+
+            document.close();
+        } catch (DocumentException e) {
+            e.printStackTrace();
+            throw new DocumentException("Erro ao gerar PDF.");
+        }
+
+        return baos.toByteArray();
+    }
+
+    private byte[] generateXmlReport(List<SurveyResponseDetailDto> responses) throws IOException {
+        XmlMapper xmlMapper = new XmlMapper();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        xmlMapper.writeValue(baos, responses);
+
+        return baos.toByteArray();
+    }
+
     private SurveyResponseDetailDto convertToSurveyResponseDetailDto(SurveyResponse entity) {
         SurveyResponseDetailDto dto = new SurveyResponseDetailDto();
         dto.setId(entity.getId());
         dto.setCompanyId(entity.getCompany().getId());
         dto.setCompanyName(entity.getCompany().getName());
-        dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa()); // populando o novo campo
+        dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa());
         dto.setResponseDate(entity.getResponseDate());
         dto.setGuestIdentifier(entity.getGuestIdentifier());
         dto.setFreeTextFeedback(entity.getFreeTextFeedback());
@@ -137,9 +194,6 @@ public class ReportService {
         return dto;
     }
 
-
-
-    // Helper para converter entidade QuestionAnswer para QuestionAnswerDetailDto
     private QuestionAnswerDetailDto convertToQuestionAnswerDetailDto(QuestionAnswer entity) {
         QuestionAnswerDetailDto dto = new QuestionAnswerDetailDto();
         dto.setAnswerId(entity.getId());
