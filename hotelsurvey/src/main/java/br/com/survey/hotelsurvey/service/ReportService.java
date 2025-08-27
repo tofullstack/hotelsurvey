@@ -14,6 +14,8 @@ import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -25,6 +27,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 @Service
 public class ReportService {
@@ -38,13 +43,14 @@ public class ReportService {
                 .collect(Collectors.toList());
     }
 
-    public ReportSummaryDto getFilteredSurveyResponses(
+    public Page<SurveyResponseDetailDto> getFilteredSurveyResponses(
             Long companyId,
             String companyName,
             String serieEmpresa,
             String language,
             LocalDateTime startDate,
-            LocalDateTime endDate) {
+            LocalDateTime endDate,
+            Pageable pageable) {
 
         Specification<SurveyResponse> spec = (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -71,30 +77,9 @@ public class ReportService {
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
 
-        List<SurveyResponse> responses = surveyResponseRepository.findAll(spec);
+        Page<SurveyResponse> responsesPage = surveyResponseRepository.findAll(spec, pageable);
 
-        List<SurveyResponseDetailDto> detailDtos = responses.stream()
-                .map(this::convertToSurveyResponseDetailDto)
-                .collect(Collectors.toList());
-
-        double totalRating = 0;
-        long ratingCount = 0;
-
-        for (SurveyResponseDetailDto responseDto : detailDtos) {
-            for (QuestionAnswerDetailDto answerDto : responseDto.getAnswers()) {
-                if (answerDto.getQuestionType() == QuestionType.SCALE && !Boolean.TRUE.equals(answerDto.getDidNotUseService())) {
-                    try {
-                        totalRating += Double.parseDouble(answerDto.getAnswerValue());
-                        ratingCount++;
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-            }
-        }
-
-        Double averageRating = (ratingCount > 0) ? totalRating / ratingCount : null;
-
-        return new ReportSummaryDto(responses.size(), averageRating, detailDtos);
+        return responsesPage.map(this::convertToSurveyResponseDetailDto);
     }
 
     public byte[] downloadReport(
@@ -106,14 +91,17 @@ public class ReportService {
             LocalDateTime endDate,
             String format) throws IOException, DocumentException {
 
+        Pageable pageableAll = Pageable.unpaged();
+
         List<SurveyResponseDetailDto> responses = getFilteredSurveyResponses(
                 companyId,
                 companyName,
                 serieEmpresa,
                 language,
                 startDate,
-                endDate
-        ).getResponses();
+                endDate,
+                pageableAll
+        ).getContent();
 
         if ("pdf".equalsIgnoreCase(format)) {
             return generatePdfReport(responses);
@@ -205,5 +193,65 @@ public class ReportService {
         dto.setAnswerValue(entity.getAnswerValue());
         dto.setDidNotUseService(entity.getDidNotUseService());
         return dto;
+    }
+
+
+    public ReportSummaryDto getReportSummary(
+            Long companyId,
+            String companyName,
+            String serieEmpresa,
+            String language,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
+
+        Specification<SurveyResponse> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (companyId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("company").get("id"), companyId));
+            }
+            if (StringUtils.hasText(companyName)) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("company").get("name")), "%" + companyName.toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(serieEmpresa)) {
+                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("company").get("serieEmpresa")), serieEmpresa.toLowerCase()));
+            }
+            if (StringUtils.hasText(language)) {
+                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("language")), language.toLowerCase()));
+            }
+            if (startDate != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("responseDate"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("responseDate"), endDate.plusSeconds(1)));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<SurveyResponse> responses = surveyResponseRepository.findAll(spec);
+
+        List<SurveyResponseDetailDto> detailDtos = responses.stream()
+                .map(this::convertToSurveyResponseDetailDto)
+                .collect(Collectors.toList());
+
+        double totalRating = 0;
+        long ratingCount = 0;
+
+        for (SurveyResponseDetailDto responseDto : detailDtos) {
+            for (QuestionAnswerDetailDto answerDto : responseDto.getAnswers()) {
+                if (answerDto.getQuestionType() == QuestionType.SCALE && !Boolean.TRUE.equals(answerDto.getDidNotUseService())) {
+                    try {
+                        totalRating += Double.parseDouble(answerDto.getAnswerValue());
+                        ratingCount++;
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+        }
+
+        Double averageRating = (ratingCount > 0) ? totalRating / ratingCount : null;
+
+        return new ReportSummaryDto(responses.size(), averageRating, detailDtos);
     }
 }

@@ -94,7 +94,6 @@ public class FormAdminService {
         Company company = companyRepository.findById(dto.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId()));
 
-        // atualiza os campos principais do formulário
         existingSection.setName(dto.getName());
         existingSection.setCompany(company);
         existingSection.setActive(dto.getActive());
@@ -127,7 +126,6 @@ public class FormAdminService {
                     .map(tDto -> {
                         Question question;
                         Long questionIdFromDto = tDto.getQuestionId();
-                        // se for um ID temporário, usa o mapa para encontrar o ID real
                         if (tDto.getQuestionId() != null && tDto.getQuestionId().toString().startsWith("temp-")) {
                             Long originalTempId = Long.valueOf(tDto.getQuestionId().toString().replace("temp-", ""));
                             Long realId = tempIdToRealIdMap.get(originalTempId);
@@ -137,7 +135,6 @@ public class FormAdminService {
                             question = questionRepository.findById(realId)
                                     .orElseThrow(() -> new ResourceNotFoundException("Question not found with real ID: " + realId));
                         } else {
-                            // se for um ID real, busca a pergunta diretamente
                             question = questionRepository.findById(questionIdFromDto)
                                     .orElseThrow(() -> new ResourceNotFoundException("Question not found with ID: " + questionIdFromDto));
                         }
@@ -337,7 +334,7 @@ public class FormAdminService {
         return trigger;
     }
 
-    public List<SurveySectionDto> searchForms(String companyName, String status) {
+    public List<SurveySectionDto> searchForms(String companyName, String status, Boolean conditional) {
         List<SurveySection> forms = surveySectionRepository.findAll();
         return forms.stream()
                 .filter(f -> companyName == null || f.getCompany().getName().toLowerCase().contains(companyName.toLowerCase()))
@@ -345,6 +342,15 @@ public class FormAdminService {
                     if ("ativos".equalsIgnoreCase(status)) return Boolean.TRUE.equals(f.getActive());
                     if ("inativos".equalsIgnoreCase(status)) return Boolean.FALSE.equals(f.getActive());
                     return true;
+                })
+                .filter(f -> {
+                    if (conditional == null) {
+                        return true;
+                    }
+                    if (f.getConditional() == null) {
+                        return !conditional; // Se f.getConditional() for null, é considerado normal (false)
+                    }
+                    return f.getConditional().equals(conditional);
                 })
                 .map(this::convertToSurveySectionDto)
                 .collect(Collectors.toList());

@@ -9,6 +9,9 @@ import br.com.survey.hotelsurvey.entity.User;
 import br.com.survey.hotelsurvey.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page; // Import the Page class
+import org.springframework.data.domain.PageRequest; // Import the PageRequest class
+import org.springframework.data.domain.Pageable; // Import the Pageable class
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,7 +47,6 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    // Novo endpoint para edição de usuário
     @PutMapping("/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @Valid @RequestBody UserDto userDto) {
@@ -68,8 +70,12 @@ public class AuthController {
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<UserDto> users = authService.getAllUsers();
+    public ResponseEntity<Page<UserDto>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<UserDto> users = authService.getAllUsers(pageable);
         return ResponseEntity.ok(users);
     }
 

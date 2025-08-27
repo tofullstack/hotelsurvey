@@ -5,6 +5,9 @@ import br.com.survey.hotelsurvey.dto.SurveyResponseDetailDto;
 import br.com.survey.hotelsurvey.service.ReportService;
 import com.itextpdf.text.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -14,7 +17,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -25,23 +30,35 @@ public class ReportController {
     private ReportService reportService;
 
     @GetMapping("/responses")
-    public ResponseEntity<ReportSummaryDto> getSurveyResponses( // <-- Alterado o tipo de retorno
-                                                                @RequestParam(required = false) Long companyId,
-                                                                @RequestParam(required = false) String companyName,
-                                                                @RequestParam(required = false) String serieEmpresa,
-                                                                @RequestParam(required = false) String language,
-                                                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-                                                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+    public ResponseEntity<Map<String, Object>> getSurveyResponses(
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String serieEmpresa,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        ReportSummaryDto summary = reportService.getFilteredSurveyResponses(
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<SurveyResponseDetailDto> responsesPage = reportService.getFilteredSurveyResponses(
                 companyId,
                 companyName,
                 serieEmpresa,
                 language,
                 startDate,
-                endDate
+                endDate,
+                pageable
         );
-        return ResponseEntity.ok(summary);
+
+        // Cria um Map com os dados paginados para garantir a estabilidade da resposta
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", responsesPage.getContent());
+        response.put("totalPages", responsesPage.getTotalPages());
+        response.put("totalElements", responsesPage.getTotalElements());
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -88,5 +105,25 @@ public class ReportController {
     public ResponseEntity<List<SurveyResponseDetailDto>> getSurveyResponsesBySerie(@PathVariable String serieEmpresa) {
         List<SurveyResponseDetailDto> responses = reportService.getSurveyResponsesBySerie(serieEmpresa);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<ReportSummaryDto> getSummary(
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String serieEmpresa,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+
+        ReportSummaryDto summary = reportService.getReportSummary(
+                companyId,
+                companyName,
+                serieEmpresa,
+                language,
+                startDate,
+                endDate
+        );
+        return ResponseEntity.ok(summary);
     }
 }

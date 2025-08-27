@@ -67,15 +67,15 @@ public class FormAdminController {
     @GetMapping("/search")
     public ResponseEntity<List<SurveySectionDto>> searchForms(
             @RequestParam(required = false) String companyName,
-            @RequestParam(defaultValue = "todos") String status){
-        List<SurveySectionDto> results= formAdminService.searchForms(companyName, status);
+            @RequestParam(defaultValue = "todos") String status,
+            @RequestParam(required = false) Boolean conditional){
+        List<SurveySectionDto> results = formAdminService.searchForms(companyName, status, conditional);
         return ResponseEntity.ok(results);
     }
 
 
 
 
-    // novo endpoint para buscar o formulário por ID e idioma desejado
     @GetMapping("/questions/{id}/language/{targetLanguage}")
     public SurveySectionDto getSurveyFormInLanguage(
             @PathVariable Long id,
@@ -88,6 +88,4 @@ public class FormAdminController {
         List<SurveySectionDto> forms = formAdminService.getConditionalFormsForCompany(companyId);
         return ResponseEntity.ok(forms);
     }
-
-
 }

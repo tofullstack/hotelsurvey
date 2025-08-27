@@ -115,7 +115,7 @@ public class FormAdminControllerTest {
         dto.setId(1L);
         dto.setName("Academia");
 
-        when(formAdminService.searchForms("hotel", "ativos")).thenReturn(List.of(dto));
+        when(formAdminService.searchForms("hotel", "ativos",true)).thenReturn(List.of(dto));
 
         mockMvc.perform(get("/api/forms/search")
                         .param("companyName", "hotel")
