@@ -348,7 +348,7 @@ public class FormAdminService {
                         return true;
                     }
                     if (f.getConditional() == null) {
-                        return !conditional; // Se f.getConditional() for null, é considerado normal (false)
+                        return !conditional;
                     }
                     return f.getConditional().equals(conditional);
                 })

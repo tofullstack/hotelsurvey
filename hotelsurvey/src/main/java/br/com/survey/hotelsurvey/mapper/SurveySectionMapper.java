@@ -30,7 +30,9 @@ public class SurveySectionMapper {
         if (section.getCompany() != null) {
             dto.setCompanyId(section.getCompany().getId());
             dto.setCompanyName(section.getCompany().getName());
+
             dto.setSerieEmpresa(section.getCompany().getSerieEmpresa());
+            dto.setLanguage(section.getLanguage());
 
         }
 
@@ -42,13 +44,11 @@ public class SurveySectionMapper {
     private static QuestionDto toQuestionDto(Question q) {
         return new QuestionDto(
                 q.getId(),
-                //surveySectionId como o segundo argumento
                 q.getSurveySection() != null ? q.getSurveySection().getId() : null,
                 q.getType(),
                 q.getLabel(),
                 q.getDeniable() != null ? q.getDeniable() : false,
                 q.getMandatory() != null ? q.getMandatory() : false,
-//                q.getRequired() != null ? q.getRequired() : false,
                 q.getOptions()
         );
     }
@@ -65,7 +65,6 @@ public class SurveySectionMapper {
                 questionDto.setId(question.getId());
                 questionDto.setType(question.getType());
                 questionDto.setMandatory(question.getMandatory());
-//                questionDto.setRequired(question.getRequired());
                 questionDto.setDeniable(question.getDeniable());
                 questionDto.setOptions(question.getOptions());
 

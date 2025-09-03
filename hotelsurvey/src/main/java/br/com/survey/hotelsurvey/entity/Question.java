@@ -39,7 +39,7 @@ public class Question {
     @Column(nullable = false)
     private Boolean mandatory = false;
 
-//    private Boolean required;
+
 
     @Convert(converter = ListToJsonConverter.class)
     private List<String> options;

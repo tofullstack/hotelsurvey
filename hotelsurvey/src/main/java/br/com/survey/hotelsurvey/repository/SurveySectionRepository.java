@@ -22,7 +22,6 @@ public interface SurveySectionRepository extends JpaRepository<SurveySection, Lo
     //teste: novo filtro para tratamento no formadminservice SEM linguagem definida
     boolean existsByNameAndCompanyId(String name, Long companyId);
 
-    //forçar o carregamento das perguntas
     @EntityGraph(attributePaths = {"questions"})
     Optional<SurveySection> findWithQuestionsById(Long id);
 

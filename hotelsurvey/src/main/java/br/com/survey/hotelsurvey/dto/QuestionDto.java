@@ -23,7 +23,6 @@ public class QuestionDto {
     private String label;
     private Boolean deniable;
     private Boolean mandatory;
-//    private Boolean required;
     private List<String> options;
 
     @NotEmpty(message = "At least one translation is required")

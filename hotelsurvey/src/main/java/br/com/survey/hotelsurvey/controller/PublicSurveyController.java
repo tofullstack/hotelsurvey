@@ -22,16 +22,11 @@ public class PublicSurveyController {
     @Autowired
     private SurveyResponseService surveyResponseService;
 
-    // ENDPOINT UNIFICADO PARA BUSCAR UM FORMULÁRIO ESPECÍFICO POR ID E IDIOMA
-    // A rota deve ser alterada para aceitar 'formId' em vez de 'companyId'
     @GetMapping("/questions/{formId}/{language}")
     public ResponseEntity<PublicSurveySectionDto> getSurveyQuestions(
             @PathVariable Long formId,
             @PathVariable String language) {
-        // A lógica do serviço foi ajustada para usar o método 'getSingleSurveySection' que já existe
-        // Note que o método 'getSingleSurveySection' no seu service original espera companyId.
-        // Precisamos ajustar o service para não precisar do companyId ou passá-lo de outra forma.
-        // A forma mais limpa é criar um novo método no service que só precise do formId e language.
+
         PublicSurveySectionDto surveySection = publicApiService.getSingleSurveySectionByFormIdAndLanguage(formId, language);
         return ResponseEntity.ok(surveySection);
     }

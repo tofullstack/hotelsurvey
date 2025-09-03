@@ -142,7 +142,8 @@ public class SurveyResponseService {
         dto.setId(entity.getId());
         dto.setCompanyId(entity.getCompany().getId());
         dto.setCompanyName(entity.getCompany().getName());
-        dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa()); // populando o novo campo
+        dto.setLanguage(entity.getLanguage());
+        dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa());
         dto.setResponseDate(entity.getResponseDate());
         dto.setGuestIdentifier(entity.getGuestIdentifier());
         dto.setFreeTextFeedback(entity.getFreeTextFeedback());

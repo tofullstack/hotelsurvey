@@ -52,6 +52,8 @@ public class PublicApiService {
         dto.setType(question.getType().name());
         dto.setMandatory(question.getMandatory());
         dto.setOptions(question.getOptions());
+        dto.setDeniable(question.getDeniable());
+
 
         String label = question.getTranslations().stream()
                 .filter(t -> t.getLanguage().equalsIgnoreCase(language))
