@@ -12,5 +12,6 @@ import java.util.List;
 public class ReportSummaryDto {
     private long totalResponses;
     private Double averageRating;
-    private List<SurveyResponseDetailDto> responses;
+    private Double ratingStandardDeviation;
+//    private List<SurveyResponseDetailDto> responses;
 }

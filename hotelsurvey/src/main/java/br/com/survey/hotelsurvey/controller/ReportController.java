@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -52,7 +54,6 @@ public class ReportController {
                 pageable
         );
 
-        // Cria um Map com os dados paginados para garantir a estabilidade da resposta
         Map<String, Object> response = new HashMap<>();
         response.put("content", responsesPage.getContent());
         response.put("totalPages", responsesPage.getTotalPages());
@@ -125,5 +126,29 @@ public class ReportController {
                 endDate
         );
         return ResponseEntity.ok(summary);
+    }
+
+    // novo metodo implementacao da pesquisa unica
+    @GetMapping("/download/response/{id}")
+    public ResponseEntity<byte[]> downloadSingleResponseReport(@PathVariable Long id) {
+        try {
+            Optional<SurveyResponseDetailDto> responseDtoOptional = reportService.getSurveyResponseById(id);
+
+            if (responseDtoOptional.isPresent()) {
+                SurveyResponseDetailDto responseDto = responseDtoOptional.get();
+                byte[] pdfData = reportService.generatePdfForSingleResponse(responseDto);
+
+                HttpHeaders headers = new HttpHeaders();
+                String filename = "relatorio_avaliacao_" + id + ".pdf";
+                headers.setContentDispositionFormData("attachment", filename);
+                headers.setContentType(MediaType.APPLICATION_PDF);
+                return new ResponseEntity<>(pdfData, headers, HttpStatus.OK);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

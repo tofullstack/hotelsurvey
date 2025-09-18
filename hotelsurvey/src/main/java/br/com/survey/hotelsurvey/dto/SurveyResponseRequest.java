@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SurveyResponseRequest {
-    @NotNull(message = "Company ID cannot be null") //padronizando em ingles
+    @NotNull(message = "Company ID cannot be null")
     private Long companyId;
 
     private String language;

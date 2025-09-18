@@ -15,7 +15,7 @@ public class SurveyResponseDetailDto {
     private String language;
     private Long companyId;
     private String companyName;
-    private String serieEmpresa; //novo campo para inclusao da serie
+    private String serieEmpresa;
     private LocalDateTime responseDate;
     private String guestIdentifier;
     private String freeTextFeedback;
