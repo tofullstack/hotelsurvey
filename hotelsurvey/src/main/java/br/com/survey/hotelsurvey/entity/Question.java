@@ -51,17 +51,24 @@ public class Question {
     private List<ConditionalSectionTrigger> triggers = new ArrayList<>();
 
 
+    @Column(name = "question_order")
+    private Integer orderIndex;
 
     // traduções da pergunta
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @EqualsAndHashCode.Exclude // excluindo'translations' do equals/hashCode
-    @ToString.Exclude     // excluindo 'translations' do toString
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private Set<QuestionTranslation> translations;
 
     public Question() {
 
         this.triggers = new ArrayList<>();
         this.translations = new HashSet<>();
+    }
+
+    public void addTranslation(QuestionTranslation translation) {
+        this.translations.add(translation);
+        translation.setQuestion(this);
     }
 
 

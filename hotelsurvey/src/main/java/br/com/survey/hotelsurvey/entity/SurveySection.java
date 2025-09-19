@@ -41,8 +41,13 @@ public class SurveySection {
 
     private Company company;
 
+
     @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-    @OrderBy("id ASC")
+    @OrderBy("orderIndex ASC")
     @ToString.Exclude
     private List<Question> questions;
+//    @OneToMany(mappedBy = "surveySection", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+//    @OrderBy("id ASC")
+//    @ToString.Exclude
+//    private List<Question> questions;
 }

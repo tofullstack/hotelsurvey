@@ -54,7 +54,7 @@ public class CompanyControllerTest {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
 
-    /* Cenario de Sucesso
+    /* Cenário de Sucesso
      * Criando uma empresa com sucesso retorna 200 */
     @Test
     @DisplayName("Deve criar uma empresa com sucesso STATUS: 201")

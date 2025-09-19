@@ -54,13 +54,14 @@ public class FormAdminService {
         surveySection.setSerieEmpresa(dto.getSerieEmpresa());
         surveySection.setConditional(dto.getConditional());
 
+        List<Question> questions = new ArrayList<>();
+        for (int i = 0; i < dto.getQuestions().size(); i++) {
+            Question qEntity = convertToQuestionEntity(dto.getQuestions().get(i), surveySection, dto.getLanguage());
+            qEntity.setOrderIndex(i);
+            questions.add(qEntity);
+        }
+        surveySection.setQuestions(questions);
         SurveySection savedSection = surveySectionRepository.save(surveySection);
-
-        List<Question> questions = dto.getQuestions().stream()
-                .map(qDto -> convertToQuestionEntity(qDto, savedSection,dto.getLanguage()))
-                .collect(Collectors.toList());
-        questionRepository.saveAll(questions);
-        savedSection.setQuestions(questions);
 
         if (dto.getTriggers() != null && !dto.getTriggers().isEmpty()) {
             List<ConditionalSectionTrigger> triggers = dto.getTriggers().stream()
@@ -84,60 +85,40 @@ public class FormAdminService {
         SurveySection existingSection = surveySectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + id));
 
-        if (!existingSection.getName().equals(dto.getName()) || !existingSection.getCompany().getId().equals(dto.getCompanyId())) {
-            if (surveySectionRepository.existsByNameAndCompanyId(dto.getName(), dto.getCompanyId())) {
-                throw new DuplicateEntryException("A form with this name and company already exists.");
-            }
-        }
-        validateQuestions(dto.getQuestions());
-
-        Company company = companyRepository.findById(dto.getCompanyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId()));
-
         existingSection.setName(dto.getName());
-        existingSection.setCompany(company);
+        existingSection.setCompany(companyRepository.findById(dto.getCompanyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId())));
         existingSection.setActive(dto.getActive());
         existingSection.setLanguage(dto.getLanguage());
         existingSection.setSerieEmpresa(dto.getSerieEmpresa());
         existingSection.setConditional(dto.getConditional());
 
-        triggerRepository.deleteAllByQuestionSurveySectionId(existingSection.getId());
 
-        List<Question> newQuestionsEntities = dto.getQuestions().stream()
+        List<Question> updatedQuestions = dto.getQuestions().stream()
                 .map(qDto -> convertToQuestionEntity(qDto, existingSection, dto.getLanguage()))
                 .collect(Collectors.toList());
 
+        for (int i = 0; i < updatedQuestions.size(); i++) {
+            updatedQuestions.get(i).setOrderIndex(i);
+        }
+
+
         existingSection.getQuestions().clear();
-        existingSection.getQuestions().addAll(newQuestionsEntities);
+
+        existingSection.getQuestions().addAll(updatedQuestions);
 
         SurveySection updatedSection = surveySectionRepository.save(existingSection);
 
-        if (dto.getTriggers() != null && !dto.getTriggers().isEmpty()) {
-            Map<Long, Long> tempIdToRealIdMap = new HashMap<>();
-            for (Question question : updatedSection.getQuestions()) {
-                dto.getQuestions().stream()
-                        .filter(qDto -> qDto.getId() != null && qDto.getId().toString().startsWith("temp-"))
-                        .filter(qDto -> qDto.getLabel().equals(question.getLabel())) // Assumindo que o label é único
-                        .findFirst()
-                        .ifPresent(qDto -> tempIdToRealIdMap.put(Long.valueOf(qDto.getId().toString().replace("temp-", "")), question.getId()));
-            }
 
+        existingSection.getQuestions().forEach(q -> q.getTriggers().clear());
+
+        if (dto.getTriggers() != null && !dto.getTriggers().isEmpty()) {
             List<ConditionalSectionTrigger> newTriggers = dto.getTriggers().stream()
                     .map(tDto -> {
-                        Question question;
-                        Long questionIdFromDto = tDto.getQuestionId();
-                        if (tDto.getQuestionId() != null && tDto.getQuestionId().toString().startsWith("temp-")) {
-                            Long originalTempId = Long.valueOf(tDto.getQuestionId().toString().replace("temp-", ""));
-                            Long realId = tempIdToRealIdMap.get(originalTempId);
-                            if (realId == null) {
-                                throw new ValidationException("Temporal ID mapping failed for question: " + tDto.getQuestionId());
-                            }
-                            question = questionRepository.findById(realId)
-                                    .orElseThrow(() -> new ResourceNotFoundException("Question not found with real ID: " + realId));
-                        } else {
-                            question = questionRepository.findById(questionIdFromDto)
-                                    .orElseThrow(() -> new ResourceNotFoundException("Question not found with ID: " + questionIdFromDto));
-                        }
+                        Question question = updatedSection.getQuestions().stream()
+                                .filter(q -> q.getId().equals(tDto.getQuestionId()))
+                                .findFirst()
+                                .orElseThrow(() -> new ResourceNotFoundException("Question not found with ID: " + tDto.getQuestionId()));
                         return convertToTriggerEntity(tDto, question);
                     })
                     .collect(Collectors.toList());
@@ -146,6 +127,7 @@ public class FormAdminService {
 
         return convertToSurveySectionDto(updatedSection);
     }
+
     @Transactional
     public void deactivateForm(Long id) {
         SurveySection surveySection = surveySectionRepository.findById(id)
@@ -263,7 +245,6 @@ public class FormAdminService {
 
         return dto;
     }
-
     private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection, String formLanguage) {
         Question entity = new Question();
 
@@ -272,8 +253,6 @@ public class FormAdminService {
         }
 
         entity.setSurveySection(surveySection);
-
-
         String primaryLabel = dto.getLabel();
         entity.setLabel(primaryLabel);
         entity.setType(dto.getType());
@@ -281,27 +260,32 @@ public class FormAdminService {
         entity.setDeniable(dto.getDeniable());
         entity.setOptions(dto.getOptions());
 
-        entity.setTranslations(
-                dto.getTranslations().stream()
-                        .filter(t -> !formLanguage.equals(t.getLanguage()))
-                        .map(t -> {
-                            var qt = new QuestionTranslation();
-                            qt.setLabel(t.getLabel());
-                            qt.setLanguage(t.getLanguage());
-                            qt.setQuestion(entity);
-                            return qt;
-                        }).collect(Collectors.toSet())
-        );
-
+        Set<QuestionTranslation> translations = new HashSet<>();
+        if (dto.getTranslations() != null) {
+            for (QuestionTranslationDto tDto : dto.getTranslations()) {
+                if (tDto.getLanguage().equals(formLanguage)) {
+                    continue;
+                }
+                var qt = new QuestionTranslation();
+                qt.setLabel(tDto.getLabel());
+                qt.setLanguage(tDto.getLanguage());
+                qt.setQuestion(entity);
+                translations.add(qt);
+            }
+        }
 
         var primaryTranslation = new QuestionTranslation();
         primaryTranslation.setLabel(primaryLabel);
         primaryTranslation.setLanguage(formLanguage);
         primaryTranslation.setQuestion(entity);
-        entity.getTranslations().add(primaryTranslation);
+        translations.add(primaryTranslation);
+
+        entity.setTranslations(translations);
 
         return entity;
     }
+
+
     private QuestionDto convertToQuestionDto(Question entity) {
         QuestionDto dto = new QuestionDto();
         dto.setId(entity.getId());
