@@ -55,7 +55,7 @@ public class SurveyResponseService {
         surveyResponse.setGuestIdentifier(request.getGuestIdentifier());
         surveyResponse.setFreeTextFeedback(request.getFreeTextFeedback());
         surveyResponse.setSerieEmpresa(company.getSerieEmpresa());
-        surveyResponse.setLanguage(request.getLanguage()); // <-- Adicione esta linha
+        surveyResponse.setLanguage(request.getLanguage());
 
         SurveyResponse savedSurveyResponse = surveyResponseRepository.save(surveyResponse);
 
