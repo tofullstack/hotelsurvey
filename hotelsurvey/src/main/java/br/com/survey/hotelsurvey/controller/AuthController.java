@@ -34,14 +34,14 @@ public class AuthController {
     }
 
     @PostMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')") // only ADMIN can create users
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserCreationRequest request) {
         UserDto createdUser = authService.createUser(request);
         return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
 
     @PutMapping("/users/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')") // apenas ADMIN pode desativar
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
         authService.deactivateUser(id);
         return ResponseEntity.noContent().build();
@@ -55,7 +55,7 @@ public class AuthController {
     }
 
     @PutMapping("/users/{id}/activate")
-    @PreAuthorize("hasRole('ADMIN')") // apenas ADMIN pode ativar
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> activateUser(@PathVariable Long id) {
         authService.activateUser(id);
         return ResponseEntity.noContent().build();

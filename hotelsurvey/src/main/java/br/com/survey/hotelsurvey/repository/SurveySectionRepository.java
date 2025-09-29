@@ -15,8 +15,14 @@ public interface SurveySectionRepository extends JpaRepository<SurveySection, Lo
     List<SurveySection> findByCompanyIdAndActiveTrueWithQuestions(@Param("companyId") Long companyId);
 
 
+    //teste novo endpoint para formularios por serie empresa
+    @Query("SELECT DISTINCT s FROM SurveySection s LEFT JOIN FETCH s.questions q WHERE s.company.serieEmpresa = :serieName")
+    List<SurveySection> findByCompanySerieNameWithQuestions(String serieName);
+
+
 
     List<SurveySection> findByConditionalIsTrueAndCompanyId(Long companyId);
+
 
 
     //teste: novo filtro para tratamento no formadminservice SEM linguagem definida

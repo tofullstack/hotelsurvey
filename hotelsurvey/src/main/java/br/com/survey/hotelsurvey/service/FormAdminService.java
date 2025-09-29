@@ -10,6 +10,7 @@ import br.com.survey.hotelsurvey.exception.ResourceNotFoundException;
 import br.com.survey.hotelsurvey.exception.ValidationException;
 import br.com.survey.hotelsurvey.repository.CompanyRepository;
 import br.com.survey.hotelsurvey.repository.ConditionalSectionTriggerRepository;
+//import br.com.survey.hotelsurvey.repository.QuestionRepository;
 import br.com.survey.hotelsurvey.repository.QuestionRepository;
 import br.com.survey.hotelsurvey.repository.SurveySectionRepository;
 import jakarta.transaction.Transactional;
@@ -168,6 +169,23 @@ public class FormAdminService {
                 .map(this::convertToSurveySectionDto)
                 .collect(Collectors.toList());
     }
+
+    //teste novo endpoint para formularios por serieEmpresa
+    public List<SurveySectionDto> getAllFormsForCompanySerie(String serieEmpresa) {
+        return surveySectionRepository.findByCompanySerieNameWithQuestions(serieEmpresa)
+                .stream()
+                .map(this::convertToSurveySectionDto)
+                .collect(Collectors.toList());
+    }
+
+    //novo endpoint teste
+    public List<QuestionDto> getAllQuestionsForSurvey(String serieEmpresa) {
+        return questionRepository.findBySurveySectionSerie(serieEmpresa)
+                .stream()
+                .map(this::convertToQuestionDto)
+                .collect(Collectors.toList());
+    }
+
 
     private void validateQuestions(List<QuestionDto> questions) {
         if (questions == null || questions.isEmpty()) {

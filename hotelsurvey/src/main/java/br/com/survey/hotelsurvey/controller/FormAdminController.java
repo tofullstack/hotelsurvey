@@ -1,7 +1,10 @@
 package br.com.survey.hotelsurvey.controller;
 
+import br.com.survey.hotelsurvey.dto.QuestionDto;
 import br.com.survey.hotelsurvey.dto.SurveySectionDto;
 import br.com.survey.hotelsurvey.service.FormAdminService;
+import jakarta.annotation.security.PermitAll;
+import org.springframework.security.access.annotation.Secured;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,13 +16,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/forms")
-@PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
+//@PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
 @CrossOrigin("*")
 public class FormAdminController {
 
     @Autowired
     private FormAdminService formAdminService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @PostMapping
     public ResponseEntity<SurveySectionDto> createForm(@Valid @RequestBody SurveySectionDto dto) {
         SurveySectionDto createdForm = formAdminService.createForm(dto);
@@ -27,43 +31,49 @@ public class FormAdminController {
         return new ResponseEntity<>(createdForm, HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @PutMapping("/{id}")
     public ResponseEntity<SurveySectionDto> updateForm(@PathVariable Long id, @Valid @RequestBody SurveySectionDto dto) {
         SurveySectionDto updatedForm = formAdminService.updateForm(id, dto);
         return ResponseEntity.ok(updatedForm);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateForm(@PathVariable Long id) {
         formAdminService.deactivateForm(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @PutMapping("/{id}/activate")
     public ResponseEntity<Void> activateForm(@PathVariable Long id) {
         formAdminService.activateForm(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @GetMapping("/{id}")
     public ResponseEntity<SurveySectionDto> getFormById(@PathVariable Long id) {
         SurveySectionDto form = formAdminService.getFormById(id);
         return ResponseEntity.ok(form);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @GetMapping
     public ResponseEntity<List<SurveySectionDto>> getAllForms() {
         List<SurveySectionDto> forms = formAdminService.getAllForms();
         return ResponseEntity.ok(forms);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @GetMapping("/{id}/preview")
     public ResponseEntity<SurveySectionDto> previewForm(@PathVariable Long id) {
         SurveySectionDto preview = formAdminService.previewForm(id);
         return ResponseEntity.ok(preview);
     }
 
-
+    @PreAuthorize("hasAnyRole('ADMIN', 'USUARIO')")
     @GetMapping("/search")
     public ResponseEntity<List<SurveySectionDto>> searchForms(
             @RequestParam(required = false) String companyName,
@@ -76,6 +86,7 @@ public class FormAdminController {
 
 
 
+    @PermitAll
     @GetMapping("/questions/{id}/language/{targetLanguage}")
     public SurveySectionDto getSurveyFormInLanguage(
             @PathVariable Long id,
@@ -83,9 +94,28 @@ public class FormAdminController {
         return formAdminService.getFormWithTranslatedQuestions(id, targetLanguage);
     }
 
+    @PermitAll
     @GetMapping("/conditional-forms/{companyId}")
     public ResponseEntity<List<SurveySectionDto>> getConditionalFormsForCompany(@PathVariable Long companyId) {
         List<SurveySectionDto> forms = formAdminService.getConditionalFormsForCompany(companyId);
         return ResponseEntity.ok(forms);
     }
+
+    //teste novo endpoint para formularios por serie empresa
+
+    @PermitAll
+    @GetMapping("/forms-company/{serieEmpresa}")
+    public ResponseEntity<List<SurveySectionDto>> getFormsBySerieEmpresa(@PathVariable String serieEmpresa) {
+        List<SurveySectionDto> forms = formAdminService.getAllFormsForCompanySerie(serieEmpresa);
+        return ResponseEntity.ok(forms);
+    }
+
+    @PermitAll
+    @GetMapping("/forms/questions/{serieEmpresa}")
+    public ResponseEntity<List<QuestionDto>> getQuestionsBySerieEmpresa(@PathVariable String serieEmpresa) {
+        List<QuestionDto> questions = formAdminService.getAllQuestionsForSurvey(serieEmpresa);
+        return ResponseEntity.ok(questions);
+    }
+
+
 }
