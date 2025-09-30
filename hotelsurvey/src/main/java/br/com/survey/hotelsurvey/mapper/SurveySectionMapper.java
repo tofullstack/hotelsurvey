@@ -49,6 +49,7 @@ public class SurveySectionMapper {
                 q.getLabel(),
                 q.getDeniable() != null ? q.getDeniable() : false,
                 q.getMandatory() != null ? q.getMandatory() : false,
+                q.getDisplayType() != null ? String.valueOf(q.getDisplayType()) : null,
                 q.getOptions()
         );
     }
@@ -66,6 +67,7 @@ public class SurveySectionMapper {
                 questionDto.setType(question.getType());
                 questionDto.setMandatory(question.getMandatory());
                 questionDto.setDeniable(question.getDeniable());
+                questionDto.setDisplayType(String.valueOf(question.getDisplayType()));
                 questionDto.setOptions(question.getOptions());
 
                 // aqui é onde busca a tradução

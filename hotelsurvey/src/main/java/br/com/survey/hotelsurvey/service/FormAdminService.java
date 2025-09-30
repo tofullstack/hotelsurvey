@@ -263,12 +263,16 @@ public class FormAdminService {
 
         return dto;
     }
+
     private Question convertToQuestionEntity(QuestionDto dto, SurveySection surveySection, String formLanguage) {
         Question entity = new Question();
 
         if (dto.getId() != null && !dto.getId().toString().startsWith("temp-")) {
-            entity.setId(dto.getId());
+            entity = questionRepository.findById(dto.getId()).orElse(new Question());
+        } else {
+            entity.setId(null);
         }
+
 
         entity.setSurveySection(surveySection);
         String primaryLabel = dto.getLabel();
@@ -276,19 +280,40 @@ public class FormAdminService {
         entity.setType(dto.getType());
         entity.setMandatory(dto.getMandatory());
         entity.setDeniable(dto.getDeniable());
+
+
+        final String displayTypeString = dto.getDisplayType();
+
+        RatingDisplayType ratingTypeToSave = RatingDisplayType.STARS;
+
+        if (StringUtils.hasText(displayTypeString)) {
+            try {
+                ratingTypeToSave = RatingDisplayType.valueOf(displayTypeString.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                System.err.println("Valor inválido do displayType recebido: " + displayTypeString);
+            }
+        }
+
+        entity.setDisplayType(ratingTypeToSave);
+
         entity.setOptions(dto.getOptions());
 
-        Set<QuestionTranslation> translations = new HashSet<>();
+        if (entity.getTranslations() == null) {
+            entity.setTranslations(new HashSet<>());
+        } else {
+            entity.getTranslations().clear();
+        }
+        Set<QuestionTranslation> translations = entity.getTranslations();
+
         if (dto.getTranslations() != null) {
             for (QuestionTranslationDto tDto : dto.getTranslations()) {
-                if (tDto.getLanguage().equals(formLanguage)) {
-                    continue;
+                if (!tDto.getLanguage().equals(formLanguage) && StringUtils.hasText(tDto.getLabel())) {
+                    var qt = new QuestionTranslation();
+                    qt.setLabel(tDto.getLabel());
+                    qt.setLanguage(tDto.getLanguage());
+                    qt.setQuestion(entity);
+                    translations.add(qt);
                 }
-                var qt = new QuestionTranslation();
-                qt.setLabel(tDto.getLabel());
-                qt.setLanguage(tDto.getLanguage());
-                qt.setQuestion(entity);
-                translations.add(qt);
             }
         }
 
@@ -297,8 +322,6 @@ public class FormAdminService {
         primaryTranslation.setLanguage(formLanguage);
         primaryTranslation.setQuestion(entity);
         translations.add(primaryTranslation);
-
-        entity.setTranslations(translations);
 
         return entity;
     }
@@ -312,6 +335,7 @@ public class FormAdminService {
         dto.setLabel(entity.getLabel());
         dto.setMandatory(entity.getMandatory());
         dto.setDeniable(entity.getDeniable());
+        dto.setDisplayType(String.valueOf(entity.getDisplayType()));
         dto.setOptions(entity.getOptions());
         dto.setTranslations(
                 entity.getTranslations().stream().map(t -> {

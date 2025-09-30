@@ -39,6 +39,9 @@ public class Question {
     @Column(nullable = false)
     private Boolean mandatory = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "display_type")
+    private RatingDisplayType displayType;
 
 
     @Convert(converter = ListToJsonConverter.class)
