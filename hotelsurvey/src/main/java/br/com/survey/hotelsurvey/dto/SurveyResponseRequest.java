@@ -19,7 +19,10 @@ public class SurveyResponseRequest {
 
     private String language;
 
-    private String guestIdentifier;
+    private String guestLastName;
+
+    private String guestUH;
+
 
     @Valid
     @NotNull(message = "Answers list cannot be null")

@@ -6,6 +6,7 @@ import br.com.survey.hotelsurvey.dto.SurveyResponseDetailDto;
 import br.com.survey.hotelsurvey.entity.QuestionAnswer;
 import br.com.survey.hotelsurvey.entity.QuestionType;
 import br.com.survey.hotelsurvey.entity.SurveyResponse;
+import br.com.survey.hotelsurvey.entity.QuestionTranslation;
 import br.com.survey.hotelsurvey.repository.SurveyResponseRepository;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.itextpdf.text.*;
@@ -28,9 +29,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import java.awt.Color;
 import java.awt.Font;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtils;
@@ -59,14 +60,28 @@ public class ReportService {
     private static final BaseColor DARK_TEXT = new BaseColor(50, 50, 50);
     private static final BaseColor LIGHT_GREY = new BaseColor(240, 240, 240);
     private static final BaseColor WHITE = BaseColor.WHITE;
-    private static final BaseColor BLACK = BaseColor.BLACK;
 
     private static final java.awt.Color JFREE_PRIMARY_BLUE = new java.awt.Color(40, 116, 166);
     private static final java.awt.Color JFREE_DARK_TEXT = new java.awt.Color(50, 50, 50);
 
+    private boolean isLanguageMatch(String requestedCode, String storedCode) {
+        if (!StringUtils.hasText(requestedCode) || !StringUtils.hasText(storedCode)) {
+            return false;
+        }
+
+        if (requestedCode.equalsIgnoreCase(storedCode)) {
+            return true;
+        }
+
+        String primaryRequested = requestedCode.split("-")[0];
+        String primaryStored = storedCode.split("-")[0];
+
+        return primaryRequested.equalsIgnoreCase(primaryStored);
+    }
+
     public List<SurveyResponseDetailDto> getSurveyResponsesBySerie(String serieEmpresa) {
         return surveyResponseRepository.findByCompanySerieEmpresaIgnoreCase(serieEmpresa).stream()
-                .map(this::convertToSurveyResponseDetailDto)
+                .map(entity -> convertToSurveyResponseDetailDto(entity, null))
                 .collect(Collectors.toList());
     }
 
@@ -75,6 +90,7 @@ public class ReportService {
             String companyName,
             String serieEmpresa,
             String language,
+            String questionLanguage,
             LocalDateTime startDate,
             LocalDateTime endDate,
             Pageable pageable) {
@@ -106,7 +122,7 @@ public class ReportService {
 
         Page<SurveyResponse> responsesPage = surveyResponseRepository.findAll(spec, pageable);
 
-        return responsesPage.map(this::convertToSurveyResponseDetailDto);
+        return responsesPage.map(entity -> convertToSurveyResponseDetailDto(entity, questionLanguage));
     }
 
     public byte[] downloadReport(
@@ -114,6 +130,7 @@ public class ReportService {
             String companyName,
             String serieEmpresa,
             String language,
+            String questionLanguage,
             LocalDateTime startDate,
             LocalDateTime endDate,
             String format) throws IOException, DocumentException {
@@ -125,6 +142,7 @@ public class ReportService {
                 companyName,
                 serieEmpresa,
                 language,
+                questionLanguage,
                 startDate,
                 endDate,
                 pageableAll
@@ -133,7 +151,7 @@ public class ReportService {
         ReportSummaryDto summary = getReportSummary(companyId, companyName, serieEmpresa, language, startDate, endDate);
 
         if ("pdf".equalsIgnoreCase(format)) {
-            return generatePdfReport(responses, summary);
+            return generatePdfReport(responses, summary, questionLanguage);
         } else if ("xml".equalsIgnoreCase(format)) {
             return generateXmlReport(responses);
         } else {
@@ -141,7 +159,7 @@ public class ReportService {
         }
     }
 
-    private byte[] generatePdfReport(List<SurveyResponseDetailDto> responses, ReportSummaryDto summary) throws DocumentException, IOException {
+    private byte[] generatePdfReport(List<SurveyResponseDetailDto> responses, ReportSummaryDto summary, String questionLanguage) throws DocumentException, IOException {
         Document document = new Document(PageSize.A4, 30, 30, 30, 30);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -169,6 +187,11 @@ public class ReportService {
 
             for (SurveyResponseDetailDto response : responses) {
                 document.add(createResponseDetailTable(response, formatter));
+
+                document.add(createQuestionAnswerTable(response));
+
+                addFreeTextFeedbackSection(document, response);
+
                 document.add(Chunk.NEWLINE);
                 document.add(new Phrase("----------------------------------------------------------------------------------------------------------------------------------"));
                 document.add(Chunk.NEWLINE);
@@ -184,6 +207,65 @@ public class ReportService {
 
         return baos.toByteArray();
     }
+
+    private void addFreeTextFeedbackSection(Document document, SurveyResponseDetailDto response) throws DocumentException {
+        com.itextpdf.text.Font valueFont = FontFactory.getFont(FontFactory.HELVETICA, 10, DARK_TEXT);
+
+        if (StringUtils.hasText(response.getFreeTextFeedback())) {
+            PdfPTable feedbackTable = new PdfPTable(1);
+            feedbackTable.setWidthPercentage(100);
+            feedbackTable.setSpacingBefore(10f);
+
+            PdfPCell feedbackHeader = new PdfPCell(new Phrase("Detalhes do Feedback do Cliente:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, DARK_TEXT)));
+            feedbackHeader.setBorder(Rectangle.NO_BORDER);
+            feedbackHeader.setPadding(5);
+            feedbackTable.addCell(feedbackHeader);
+
+            PdfPCell feedbackCell = new PdfPCell(new Phrase(response.getFreeTextFeedback(), valueFont));
+            feedbackCell.setBorderColor(LIGHT_BLUE_BORDER);
+            feedbackCell.setBackgroundColor(LIGHT_BLUE);
+            feedbackCell.setPadding(8);
+            feedbackTable.addCell(feedbackCell);
+
+            document.add(feedbackTable);
+        }
+    }
+
+    private PdfPTable createQuestionAnswerTable(SurveyResponseDetailDto response) throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.5f, 3.5f});
+        table.setSpacingBefore(10f);
+        table.getDefaultCell().setPadding(5);
+        table.getDefaultCell().setBorderColor(LIGHT_BLUE_BORDER);
+
+        com.itextpdf.text.Font labelFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, DARK_TEXT);
+        com.itextpdf.text.Font valueFont = FontFactory.getFont(FontFactory.HELVETICA, 10, DARK_TEXT);
+
+        PdfPCell headerCell = new PdfPCell(new Phrase("Perguntas e Respostas", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, PRIMARY_BLUE)));
+        headerCell.setBackgroundColor(LIGHT_BLUE);
+        headerCell.setColspan(2);
+        headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        headerCell.setPadding(8);
+        table.addCell(headerCell);
+
+        for (QuestionAnswerDetailDto answer : response.getAnswers()) {
+            PdfPCell questionCell = new PdfPCell(new Phrase(answer.getQuestionLabel(), labelFont));
+            questionCell.setBorder(Rectangle.NO_BORDER);
+            questionCell.setPadding(5);
+            table.addCell(questionCell);
+
+            String answerValue = answer.getDidNotUseService() ? "Não utilizou o serviço" : answer.getAnswerValue();
+            PdfPCell answerCell = new PdfPCell(new Phrase(answerValue != null ? answerValue : "N/A", valueFont));
+            answerCell.setBorder(Rectangle.NO_BORDER);
+            answerCell.setBackgroundColor(LIGHT_GREY);
+            answerCell.setPadding(5);
+            table.addCell(answerCell);
+        }
+
+        return table;
+    }
+
 
     private void addSummarySection(Document document, ReportSummaryDto summary) throws DocumentException {
         PdfPTable summaryTable = new PdfPTable(2);
@@ -274,8 +356,13 @@ public class ReportService {
         dataTable.addCell(new Phrase("Série da Empresa:", labelFont));
         dataTable.addCell(new Phrase(response.getSerieEmpresa(), valueFont));
 
-        dataTable.addCell(new Phrase("Identificador do Cliente:", labelFont));
-        dataTable.addCell(new Phrase(response.getGuestIdentifier() != null ? response.getGuestIdentifier() : "N/A", valueFont));
+        dataTable.addCell(new Phrase("Sobrenome do Cliente:", labelFont));
+        dataTable.addCell(new Phrase(response.getGuestLastName() != null ? response.getGuestLastName() : "N/A", valueFont));
+
+        dataTable.addCell(new Phrase("UH:", labelFont));
+        dataTable.addCell(new Phrase(response.getGuestUH() != null ? response.getGuestUH() : "N/A", valueFont));
+
+
 
         dataTable.addCell(new Phrase("Idioma da Resposta:", labelFont));
         dataTable.addCell(new Phrase(response.getLanguage() != null ? response.getLanguage() : "N/A", valueFont));
@@ -285,18 +372,7 @@ public class ReportService {
         dataCell.setPadding(0);
         mainTable.addCell(dataCell);
 
-        if (StringUtils.hasText(response.getFreeTextFeedback())) {
-            PdfPCell feedbackHeader = new PdfPCell(new Phrase("Detalhes do Feedback do Cliente:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, DARK_TEXT)));
-            feedbackHeader.setBorder(Rectangle.NO_BORDER);
-            feedbackHeader.setPadding(5);
-            mainTable.addCell(feedbackHeader);
 
-            PdfPCell feedbackCell = new PdfPCell(new Phrase(response.getFreeTextFeedback(), valueFont));
-            feedbackCell.setBorderColor(LIGHT_BLUE_BORDER);
-            feedbackCell.setBackgroundColor(LIGHT_BLUE);
-            feedbackCell.setPadding(8);
-            mainTable.addCell(feedbackCell);
-        }
 
         return mainTable;
     }
@@ -378,7 +454,7 @@ public class ReportService {
         return chartBaos.toByteArray();
     }
 
-    private SurveyResponseDetailDto convertToSurveyResponseDetailDto(SurveyResponse entity) {
+    private SurveyResponseDetailDto convertToSurveyResponseDetailDto(SurveyResponse entity, String filterQuestionLanguage) {
         SurveyResponseDetailDto dto = new SurveyResponseDetailDto();
         dto.setId(entity.getId());
         dto.setCompanyId(entity.getCompany().getId());
@@ -386,25 +462,68 @@ public class ReportService {
         dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa());
         dto.setLanguage(entity.getLanguage());
         dto.setResponseDate(entity.getResponseDate());
-        dto.setGuestIdentifier(entity.getGuestIdentifier());
+        dto.setGuestLastName(entity.getGuestLastName());
+        dto.setGuestUH(entity.getGuestUH());
+
         dto.setFreeTextFeedback(entity.getFreeTextFeedback());
+
+        String effectiveQuestionLanguage;
+
+        if (StringUtils.hasText(filterQuestionLanguage)) {
+            effectiveQuestionLanguage = filterQuestionLanguage;
+        } else {
+            effectiveQuestionLanguage = entity.getLanguage();
+        }
+
         dto.setAnswers(entity.getAnswers().stream()
-                .map(this::convertToQuestionAnswerDetailDto)
+                .map(answerEntity -> convertToQuestionAnswerDetailDto(answerEntity, effectiveQuestionLanguage))
                 .collect(Collectors.toList()));
         return dto;
     }
 
-    private QuestionAnswerDetailDto convertToQuestionAnswerDetailDto(QuestionAnswer entity) {
+    private QuestionAnswerDetailDto convertToQuestionAnswerDetailDto(QuestionAnswer entity, String targetLanguage) {
         QuestionAnswerDetailDto dto = new QuestionAnswerDetailDto();
         dto.setAnswerId(entity.getId());
         dto.setQuestionId(entity.getQuestion().getId());
-        dto.setQuestionLabel(entity.getQuestion().getLabel());
+
+        String translatedLabel = getTranslatedQuestionLabel(entity, targetLanguage);
+        dto.setQuestionLabel(translatedLabel);
+
         dto.setQuestionType(entity.getQuestion().getType());
         dto.setSurveySectionId(entity.getSurveySection().getId());
         dto.setSurveySectionName(entity.getSurveySection().getName());
         dto.setAnswerValue(entity.getAnswerValue());
         dto.setDidNotUseService(entity.getDidNotUseService());
         return dto;
+    }
+
+    private String getTranslatedQuestionLabel(QuestionAnswer answerEntity, String effectiveQuestionLanguage) {
+        String defaultLabel = answerEntity.getQuestion().getLabel();
+        Set<QuestionTranslation> translations = answerEntity.getQuestion().getTranslations();
+
+        if (!StringUtils.hasText(effectiveQuestionLanguage)) {
+            return defaultLabel;
+        }
+
+        Optional<String> primaryTranslation = translations.stream()
+                .filter(t -> isLanguageMatch(effectiveQuestionLanguage, t.getLanguage()))
+                .findFirst()
+                .map(QuestionTranslation::getLabel);
+
+        if (primaryTranslation.isPresent()) {
+            return primaryTranslation.get();
+        }
+
+        Optional<String> portugueseFallback = translations.stream()
+                .filter(t -> isLanguageMatch("pt-BR", t.getLanguage()))
+                .findFirst()
+                .map(QuestionTranslation::getLabel);
+
+        if (portugueseFallback.isPresent()) {
+            return portugueseFallback.get();
+        }
+
+        return defaultLabel;
     }
 
 
@@ -444,7 +563,7 @@ public class ReportService {
         List<SurveyResponse> responses = surveyResponseRepository.findAll(spec);
 
         List<SurveyResponseDetailDto> detailDtos = responses.stream()
-                .map(this::convertToSurveyResponseDetailDto)
+                .map(entity -> convertToSurveyResponseDetailDto(entity, null))
                 .collect(Collectors.toList());
 
         List<Double> ratings = new ArrayList<>();
@@ -475,10 +594,9 @@ public class ReportService {
     }
 
 
-    // implementacao de busca por pesquisa unica
     public Optional<SurveyResponseDetailDto> getSurveyResponseById(Long id) {
         return surveyResponseRepository.findById(id)
-                .map(this::convertToSurveyResponseDetailDto);
+                .map(entity -> convertToSurveyResponseDetailDto(entity, null));
     }
 
     public byte[] generatePdfForSingleResponse(SurveyResponseDetailDto response) throws DocumentException, IOException {
@@ -510,8 +628,13 @@ public class ReportService {
 
             responseDetails.addCell(new Phrase("ID da Resposta:", labelFont));
             responseDetails.addCell(new Phrase(String.valueOf(response.getId()), valueFont));
-            responseDetails.addCell(new Phrase("Identificador do Cliente:", labelFont));
-            responseDetails.addCell(new Phrase(String.valueOf(response.getGuestIdentifier()), valueFont));
+
+            responseDetails.addCell(new Phrase("Sobrenome do Cliente:", labelFont));
+            responseDetails.addCell(new Phrase(String.valueOf(response.getGuestLastName()), valueFont));
+
+            responseDetails.addCell(new Phrase("UH:", labelFont));
+            responseDetails.addCell(new Phrase(String.valueOf(response.getGuestUH()), valueFont));
+
             responseDetails.addCell(new Phrase("Empresa:", labelFont));
             responseDetails.addCell(new Phrase(response.getCompanyName(), valueFont));
             responseDetails.addCell(new Phrase("Série:", labelFont));
@@ -521,8 +644,10 @@ public class ReportService {
             responseDetails.addCell(new Phrase("Data da Resposta:", labelFont));
             responseDetails.addCell(new Phrase(response.getResponseDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), valueFont));
 
+
             document.add(responseDetails);
             document.add(Chunk.NEWLINE);
+
 
             double totalRating = 0;
             long ratingCount = 0;
@@ -558,6 +683,7 @@ public class ReportService {
                 document.add(chartImage);
                 document.add(Chunk.NEWLINE);
             }
+
 
             document.add(new Paragraph("Perguntas e Respostas Detalhadas", subtitleFont));
             document.add(Chunk.NEWLINE);
@@ -599,7 +725,7 @@ public class ReportService {
                 "Número de Respostas",
                 dataset,
                 PlotOrientation.VERTICAL,
-                false, // Remover legenda
+                false,
                 true,
                 false
         );

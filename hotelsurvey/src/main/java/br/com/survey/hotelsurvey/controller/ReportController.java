@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -31,12 +32,14 @@ public class ReportController {
     @Autowired
     private ReportService reportService;
 
+    @Transactional(readOnly = true)
     @GetMapping("/responses")
     public ResponseEntity<Map<String, Object>> getSurveyResponses(
             @RequestParam(required = false) Long companyId,
             @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String serieEmpresa,
             @RequestParam(required = false) String language,
+            @RequestParam(required = false) String questionLanguage,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
@@ -49,6 +52,7 @@ public class ReportController {
                 companyName,
                 serieEmpresa,
                 language,
+                questionLanguage,
                 startDate,
                 endDate,
                 pageable
@@ -72,6 +76,7 @@ public class ReportController {
             @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String serieEmpresa,
             @RequestParam(required = false) String language,
+            @RequestParam(required = false) String questionLanguage,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) throws IOException, DocumentException {
 
@@ -80,6 +85,7 @@ public class ReportController {
                 companyName,
                 serieEmpresa,
                 language,
+                questionLanguage,
                 startDate,
                 endDate,
                 format

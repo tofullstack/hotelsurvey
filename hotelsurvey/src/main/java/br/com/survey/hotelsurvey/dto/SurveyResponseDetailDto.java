@@ -17,7 +17,8 @@ public class SurveyResponseDetailDto {
     private String companyName;
     private String serieEmpresa;
     private LocalDateTime responseDate;
-    private String guestIdentifier;
+    private String guestLastName;
+    private String guestUH;
     private String freeTextFeedback;
     private List<QuestionAnswerDetailDto> answers;
 }

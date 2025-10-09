@@ -14,10 +14,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("DELETE FROM Question q WHERE q.surveySection.id = :surveySectionId")
     void deleteAllBySurveySectionId(@Param("surveySectionId") Long surveySectionId);
 
-//    @Query("SELECT q FROM Question q " +
-//            "WHERE q.surveySection.company.serieEmpresa = :name")
-//    List<Question> findByCompanySerieName(@Param("name") String name);
-
         @Query("SELECT q FROM Question q WHERE q.surveySection.serieEmpresa = :serieEmpresa")
         List<Question> findBySurveySectionSerie(@Param("serieEmpresa") String serieEmpresa);
 

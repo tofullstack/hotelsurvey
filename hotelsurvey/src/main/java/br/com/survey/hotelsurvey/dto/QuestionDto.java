@@ -1,7 +1,6 @@
 package br.com.survey.hotelsurvey.dto;
 
 import br.com.survey.hotelsurvey.entity.QuestionType;
-import br.com.survey.hotelsurvey.entity.RatingDisplayType;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.*;
 

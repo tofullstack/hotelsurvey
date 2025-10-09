@@ -30,7 +30,10 @@ public class SurveyResponse {
     @Column(nullable = false)
     private LocalDateTime responseDate;
 
-    private String guestIdentifier;
+    private String guestLastName;
+
+    private String guestUH;
+
 
     @OneToMany(mappedBy = "surveyResponse", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuestionAnswer> answers;

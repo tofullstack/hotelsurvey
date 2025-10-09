@@ -52,7 +52,8 @@ public class SurveyResponseService {
         SurveyResponse surveyResponse = new SurveyResponse();
         surveyResponse.setCompany(company);
         surveyResponse.setResponseDate(LocalDateTime.now());
-        surveyResponse.setGuestIdentifier(request.getGuestIdentifier());
+        surveyResponse.setGuestLastName(request.getGuestLastName());
+        surveyResponse.setGuestUH(request.getGuestUH());
         surveyResponse.setFreeTextFeedback(request.getFreeTextFeedback());
         surveyResponse.setSerieEmpresa(company.getSerieEmpresa());
         surveyResponse.setLanguage(request.getLanguage());
@@ -145,7 +146,8 @@ public class SurveyResponseService {
         dto.setLanguage(entity.getLanguage());
         dto.setSerieEmpresa(entity.getCompany().getSerieEmpresa());
         dto.setResponseDate(entity.getResponseDate());
-        dto.setGuestIdentifier(entity.getGuestIdentifier());
+        dto.setGuestLastName(entity.getGuestLastName());
+        dto.setGuestUH(entity.getGuestUH());
         dto.setFreeTextFeedback(entity.getFreeTextFeedback());
 
         //  mapper para answers
